@@ -26,4 +26,29 @@ router.post("/", async (req, res) => {
   }
 });
 
+// PATCH para editar um usuário específico
+router.patch("/:id", async (req, res) => {
+  // Aqui removi "/usuarios"
+  const { id } = req.params; // ID do usuário a ser editado
+  const { nome, email, senha, isAdmin } = req.body; // Dados para atualizar
+
+  try {
+    // Atualizar o usuário com o ID específico
+    const usuario = await Usuario.update(
+      { nome, email, senha, isAdmin }, // Campos que serão atualizados
+      { where: { id_usuario: id } } // Condição para achar o usuário pelo ID
+    );
+
+    // Verifica se algum usuário foi atualizado
+    if (usuario[0] === 0) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    res.status(200).json({ message: "Usuário atualizado com sucesso!" });
+  } catch (error) {
+    console.error("Erro ao editar usuário:", error);
+    res.status(500).json({ message: "Erro ao editar usuário" });
+  }
+});
+
 module.exports = router;
