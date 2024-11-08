@@ -1,25 +1,49 @@
 "use strict";
-const { Model, DataTypes } = require("sequelize");
-const sequelize = require("../config/db"); // Certifique-se de que o caminho está correto
 
-class Usuario extends Model {}
-Usuario.init(
-  {
-    id_usuario: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    nome: DataTypes.STRING,
-    email: DataTypes.STRING,
-    senha: DataTypes.STRING,
-    isAdmin: DataTypes.INTEGER,
+module.exports = {
+  up: async (queryInterface, Sequelize) => {
+    await queryInterface.createTable("usuarios", {
+      id_usuario: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+        allowNull: false,
+      },
+      nome: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      email: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      senha: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      isAdmin: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.fn("NOW"),
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.fn("NOW"),
+      },
+      deletedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+    });
   },
-  {
-    sequelize,
-    modelName: "Usuario",
-    tableName: "usuarios", // Certifique-se de que o nome da tabela está correto
-  }
-);
 
-module.exports = Usuario;
+  down: async (queryInterface, Sequelize) => {
+    await queryInterface.dropTable("usuarios");
+  },
+};

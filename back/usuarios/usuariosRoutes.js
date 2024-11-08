@@ -51,4 +51,26 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
+// DELETE para soft delete de um usuário
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params; // ID do usuário a ser deletado
+
+  try {
+    // Soft delete usando 'paranoid' (automático, não precisa setar manualmente o campo 'deletedAt')
+    const usuario = await Usuario.destroy({
+      where: { id_usuario: id },
+    });
+
+    // Verifica se o usuário foi encontrado e "deletado"
+    if (usuario === 0) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    res.status(200).json({ message: "Usuário deletado com sucesso!" });
+  } catch (error) {
+    console.error("Erro ao deletar usuário:", error);
+    res.status(500).json({ message: "Erro ao deletar usuário" });
+  }
+});
+
 module.exports = router;
