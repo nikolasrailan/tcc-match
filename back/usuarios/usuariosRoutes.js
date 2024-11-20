@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const Usuario = require("../models/usuario"); // Importa o modelo Sequelize
+const Usuario = require("../models/usuario");
+const bcrypt = require("bcryptjs");
 
 // Rota GET para buscar todos os usuários
 router.get("/", async (req, res) => {
@@ -18,7 +19,15 @@ router.post("/", async (req, res) => {
   const { nome, email, senha, isAdmin = 0 } = req.body;
 
   try {
-    const novoUsuario = await Usuario.create({ nome, email, senha, isAdmin }); // Usa o Sequelize para criar um novo registro
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    const novoUsuario = await Usuario.create({
+      nome,
+      email,
+      senha: senhaHash,
+      isAdmin,
+    });
+
     res.status(201).json(novoUsuario);
   } catch (error) {
     console.error("Erro ao adicionar usuário: ", error);
