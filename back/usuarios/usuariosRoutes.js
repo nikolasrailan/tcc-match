@@ -3,10 +3,9 @@ const router = express.Router();
 const Usuario = require("../models/usuario");
 const bcrypt = require("bcryptjs");
 
-// Rota GET para buscar todos os usuários
 router.get("/", async (req, res) => {
   try {
-    const usuarios = await Usuario.findAll(); // Usa o Sequelize para buscar todos os registros
+    const usuarios = await Usuario.findAll();
     res.json(usuarios);
   } catch (error) {
     console.error("Erro ao buscar usuários: ", error);
@@ -14,7 +13,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Rota POST para adicionar um novo usuário
 router.post("/", async (req, res) => {
   const { nome, email, senha, isAdmin = 0 } = req.body;
 
@@ -35,20 +33,16 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PATCH para editar um usuário específico
 router.patch("/:id", async (req, res) => {
-  // Aqui removi "/usuarios"
-  const { id } = req.params; // ID do usuário a ser editado
-  const { nome, email, senha, isAdmin } = req.body; // Dados para atualizar
+  const { id } = req.params;
+  const { nome, email, senha, isAdmin } = req.body;
 
   try {
-    // Atualizar o usuário com o ID específico
     const usuario = await Usuario.update(
-      { nome, email, senha, isAdmin }, // Campos que serão atualizados
-      { where: { id_usuario: id } } // Condição para achar o usuário pelo ID
+      { nome, email, senha, isAdmin },
+      { where: { id_usuario: id } }
     );
 
-    // Verifica se algum usuário foi atualizado
     if (usuario[0] === 0) {
       return res.status(404).json({ message: "Usuário não encontrado" });
     }
@@ -60,17 +54,14 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
-// DELETE para soft delete de um usuário
 router.delete("/:id", async (req, res) => {
-  const { id } = req.params; // ID do usuário a ser deletado
+  const { id } = req.params;
 
   try {
-    // Soft delete usando 'paranoid' (automático, não precisa setar manualmente o campo 'deletedAt')
     const usuario = await Usuario.destroy({
       where: { id_usuario: id },
     });
 
-    // Verifica se o usuário foi encontrado e "deletado"
     if (usuario === 0) {
       return res.status(404).json({ message: "Usuário não encontrado" });
     }

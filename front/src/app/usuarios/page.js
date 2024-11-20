@@ -1,8 +1,10 @@
 "use client";
 import React from "react";
 import { getUsuarios } from "@/api/usuarios";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 
 export default function Usuarios() {
+  useAuthRedirect();
   const [usuarios, setUsuarios] = React.useState([]);
 
   React.useEffect(() => {

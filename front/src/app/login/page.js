@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 const Login = () => {
   const [email, setEmail] = React.useState("");
-  const [password, setPassword] = useState("");
+  const [senha, setSenha] = React.useState("");
   const router = useRouter();
 
   const handleSubmit = async (e) => {
@@ -13,12 +13,12 @@ const Login = () => {
 
     try {
       // Envia os dados usando fetch
-      const response = await fetch("/api/login", {
+      const response = await fetch("http://localhost:8000/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, senha }),
       });
 
       if (!response.ok) {
@@ -27,11 +27,10 @@ const Login = () => {
 
       const data = await response.json();
 
-      // Armazena o token no localStorage (ou em cookies)
       localStorage.setItem("token", data.token);
+      console.log("Login realizado com sucesso!");
 
-      // Redireciona o usuário após o login bem-sucedido
-      router.push("/dashboard");
+      router.push("/usuarios");
     } catch (error) {
       console.error("Erro ao fazer login:", error);
       alert("Credenciais inválidas");
@@ -54,8 +53,8 @@ const Login = () => {
           <label>Senha:</label>
           <input
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
             required
           />
         </div>
