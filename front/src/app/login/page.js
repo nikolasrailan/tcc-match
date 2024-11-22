@@ -1,38 +1,20 @@
-// pages/login.js
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import useAuth from "@/hooks/useAuth";
 
 const Login = () => {
-  const [email, setEmail] = React.useState("");
-  const [senha, setSenha] = React.useState("");
-  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    try {
-      // Envia os dados usando fetch
-      const response = await fetch("http://localhost:8000/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, senha }),
-      });
+    const successo = await login(email, senha);
 
-      if (!response.ok) {
-        throw new Error("Erro de autenticação");
-      }
-
-      const data = await response.json();
-
-      localStorage.setItem("token", data.token);
+    if (successo) {
       console.log("Login realizado com sucesso!");
-
-      router.push("/usuarios");
-    } catch (error) {
-      console.error("Erro ao fazer login:", error);
+    } else {
       alert("Credenciais inválidas");
     }
   };

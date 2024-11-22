@@ -1,6 +1,13 @@
-'use client'
+"use client";
 import React, { useState } from "react";
-import { Button, Card, CardActions, CardContent, TextField, Typography, Box } from "@mui/material";
+import {
+  Button,
+  Card,
+  CardContent,
+  TextField,
+  Typography,
+  Box,
+} from "@mui/material";
 
 export default function LoginRegisterForm({ onSubmit }) {
   const [formData, setFormData] = useState({ nome: "", email: "", senha: "" });
@@ -11,7 +18,7 @@ export default function LoginRegisterForm({ onSubmit }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData); // Envia os dados ao pai
+    onSubmit(formData);
   };
 
   return (
@@ -20,7 +27,11 @@ export default function LoginRegisterForm({ onSubmit }) {
         <Typography variant="h4" sx={{ mb: 2 }} align="center">
           Registre-se
         </Typography>
-        <Box component="form" sx={{ display: "flex", flexDirection: "column", gap: 2 }} onSubmit={handleSubmit}>
+        <Box
+          component="form"
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          onSubmit={handleSubmit}
+        >
           <TextField
             id="nome"
             label="Nome"
@@ -47,7 +58,12 @@ export default function LoginRegisterForm({ onSubmit }) {
             value={formData.senha}
             onChange={handleChange}
           />
-          <Button type="submit" variant="contained" color="primary" size="large">
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            size="large"
+          >
             Criar Conta
           </Button>
         </Box>
