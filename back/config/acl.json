@@ -1,0 +1,42 @@
+[
+  {
+    "group": "admin",
+    "permissions": [
+      {
+        "resource": "usuarios",
+        "methods": ["GET", "POST", "PATCH", "DELETE"],
+        "action": "allow"
+      }
+    ]
+  },
+  {
+    "group": "aluno",
+    "permissions": [
+      {
+        "resource": "usuarios",
+        "methods": ["GET"],
+        "action": "allow"
+      },
+      {
+        "resource": "usuarios",
+        "methods": ["POST", "PATCH", "DELETE"],
+        "action": "deny"
+      }
+    ]
+  },
+  {
+    "group": "professor",
+    "permissions": [
+      {
+        "resource": "usuarios",
+        "methods": ["GET"],
+        "action": "allow"
+      },
+      {
+        "resource": "usuarios",
+        "methods": ["POST", "PATCH", "DELETE"],
+        "action": "deny"
+      }
+    ]
+  }
+]

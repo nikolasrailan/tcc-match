@@ -33,6 +33,27 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.patch("/:id/role", async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
+
+  try {
+    const usuario = await Usuario.update(
+      { isAdmin: role === "admin" ? 1 : 0 }, // Atualiza conforme o papel
+      { where: { id_usuario: id } }
+    );
+
+    if (usuario[0] === 0) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    res.status(200).json({ message: "Papel atualizado com sucesso!" });
+  } catch (error) {
+    console.error("Erro ao atualizar papel do usuário:", error);
+    res.status(500).json({ message: "Erro ao atualizar papel do usuário" });
+  }
+});
+
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   const { nome, email, senha, isAdmin } = req.body;

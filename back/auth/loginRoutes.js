@@ -1,46 +1,38 @@
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Usuario = require("../models/usuario");
+const bcrypt = require("bcryptjs");
 
 router.post("/", async (req, res) => {
   const { email, senha } = req.body;
 
-  if (!email || !senha) {
-    return res.status(400).json({ message: "Email e senha são obrigatórios" });
-  }
-
   try {
     const usuario = await Usuario.findOne({ where: { email } });
+
     if (!usuario) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+      return res.status(404).send("Usuário não encontrado");
     }
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
-    if (!senhaValida) {
-      return res.status(401).json({ message: "Senha incorreta" });
-    }
 
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET não definido");
-      return res
-        .status(500)
-        .json({ message: "Erro na configuração do servidor" });
+    if (!senhaValida) {
+      return res.status(401).send("Senha incorreta");
     }
 
     const token = jwt.sign(
-      { id_usuario: usuario.id_usuario, isAdmin: usuario.isAdmin },
-      process.env.JWT_SECRET,
+      {
+        id: usuario.id_usuario,
+        role: usuario.isAdmin ? "admin" : "aluno", // Define papel baseado no isAdmin
+      },
+      "seu-segredo", // Substitua por um segredo mais forte
       { expiresIn: "1h" }
     );
 
-    return res
-      .status(200)
-      .json({ mewssage: "Login realizado com sucesso!!", token });
+    res.json({ token });
   } catch (error) {
-    console.error("Erro ao fazer login:", error);
-    res.status(500).json({ message: "Erro interno no servidor" });
+    console.error("Erro no login:", error);
+    res.status(500).send("Erro no login");
   }
 });
 
