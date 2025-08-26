@@ -38,5 +38,15 @@
         "action": "deny"
       }
     ]
+  },
+  {
+    "group": "guest",
+    "permissions": [
+      {
+        "resource": "*",
+        "methods": [],
+        "action": "deny"
+      }
+    ]
   }
 ]

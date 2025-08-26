@@ -59,19 +59,33 @@ router.patch("/:id", async (req, res) => {
   const { nome, email, senha, isAdmin } = req.body;
 
   try {
-    const usuario = await Usuario.update(
-      { nome, email, senha, isAdmin },
-      { where: { id_usuario: id } }
-    );
+    const dadosParaAtualizar = {};
+    if (nome) dadosParaAtualizar.nome = nome;
+    if (email) dadosParaAtualizar.email = email;
+    if (isAdmin !== undefined) dadosParaAtualizar.isAdmin = isAdmin;
 
-    if (usuario[0] === 0) {
+    if (senha) {
+      dadosParaAtualizar.senha = await bcrypt.hash(senha, 10);
+    }
+
+    const [numLinhasAfetadas] = await Usuario.update(dadosParaAtualizar, {
+      where: { id_usuario: id },
+    });
+
+    if (numLinhasAfetadas === 0) {
       return res.status(404).json({ message: "Usuário não encontrado" });
     }
 
     res.status(200).json({ message: "Usuário atualizado com sucesso!" });
   } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({
+        message: "O e-mail informado já está em uso por outro usuário.",
+      });
+    }
+
     console.error("Erro ao editar usuário:", error);
-    res.status(500).json({ message: "Erro ao editar usuário" });
+    res.status(500).json({ message: "Ocorreu um erro ao editar o usuário." });
   }
 });
 
