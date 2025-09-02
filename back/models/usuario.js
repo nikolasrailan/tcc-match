@@ -1,31 +1,42 @@
 "use strict";
 const { Model, DataTypes } = require("sequelize");
-const sequelize = require("../config/db");
 
-class Usuario extends Model {}
+module.exports = (sequelize, DataTypes) => {
+  class Usuario extends Model {
+    static associate(models) {
+      this.hasOne(models.Professor, {
+        foreignKey: "id_usuario",
+        as: "dadosProfessor", // Apelido para a relação
+      });
 
-Usuario.init(
-  {
-    id_usuario: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    nome: DataTypes.STRING,
-    email: DataTypes.STRING,
-    senha: DataTypes.STRING,
-    isAdmin: DataTypes.INTEGER,
-    deletedAt: {
-      type: DataTypes.DATE,
-      allowNull: true, // Permite null para registros não deletados
-    },
-  },
-  {
-    sequelize,
-    modelName: "Usuario",
-    tableName: "usuarios",
-    paranoid: true, // Ativa o soft delete
+      // depois adicionar a associação para Aluno aqui também
+      // this.hasOne(models.Aluno, { ... });
+    }
   }
-);
 
-module.exports = Usuario;
+  Usuario.init(
+    {
+      id_usuario: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      nome: DataTypes.STRING,
+      email: DataTypes.STRING,
+      senha: DataTypes.STRING,
+      isAdmin: DataTypes.INTEGER,
+      deletedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+    },
+    {
+      sequelize,
+      modelName: "Usuario",
+      tableName: "usuarios",
+      paranoid: true, // Ativa o soft delete
+    }
+  );
+
+  return Usuario;
+};

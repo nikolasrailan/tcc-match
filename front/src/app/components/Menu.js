@@ -10,6 +10,9 @@ export default function Menu() {
         <Link href="/usuarios">Usuarios</Link>
       </li>
       <li>
+        <Link href="/login">Login</Link>
+      </li>
+      <li>
         <Link href="/usuarios/criar">Registrar-se</Link>
       </li>
     </ul>

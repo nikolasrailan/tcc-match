@@ -39,6 +39,7 @@ export default function LoginRegisterForm({ onSubmit }) {
             fullWidth
             value={formData.nome}
             onChange={handleChange}
+            required
           />
           <TextField
             id="email"
@@ -48,6 +49,7 @@ export default function LoginRegisterForm({ onSubmit }) {
             fullWidth
             value={formData.email}
             onChange={handleChange}
+            required
           />
           <TextField
             id="senha"
@@ -57,6 +59,7 @@ export default function LoginRegisterForm({ onSubmit }) {
             fullWidth
             value={formData.senha}
             onChange={handleChange}
+            required
           />
           <Button
             type="submit"
