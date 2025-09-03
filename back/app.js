@@ -34,9 +34,11 @@ app.use(acl.authorize.unless({ path: ["/login", "/register"] }));
 
 const usuariosRoutes = require("./usuarios/usuariosRoutes");
 const loginRoutes = require("./auth/loginRoutes");
+const professorRoutes = require("./professores/professorRoutes");
 
 app.use("/usuarios", usuariosRoutes);
 app.use("/login", loginRoutes);
+app.use("/professores", professorRoutes);
 
 const port = 8000;
 app.listen(port, () => {

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const Usuario = require("../models/usuario");
+
+const { Usuario } = require("../models");
 const bcrypt = require("bcryptjs");
 
 router.get("/", async (req, res) => {
@@ -38,12 +39,12 @@ router.patch("/:id/role", async (req, res) => {
   const { role } = req.body;
 
   try {
-    const usuario = await Usuario.update(
-      { isAdmin: role === "admin" ? 1 : 0 }, // Atualiza conforme o papel
+    const [numLinhasAfetadas] = await Usuario.update(
+      { isAdmin: role === "admin" ? 1 : 0 },
       { where: { id_usuario: id } }
     );
 
-    if (usuario[0] === 0) {
+    if (numLinhasAfetadas === 0) {
       return res.status(404).json({ message: "Usuário não encontrado" });
     }
 
@@ -93,11 +94,11 @@ router.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const usuario = await Usuario.destroy({
+    const numLinhasAfetadas = await Usuario.destroy({
       where: { id_usuario: id },
     });
 
-    if (usuario === 0) {
+    if (numLinhasAfetadas === 0) {
       return res.status(404).json({ message: "Usuário não encontrado" });
     }
 
