@@ -1,16 +1,20 @@
 "use strict";
-const { Model, DataTypes } = require("sequelize");
+const { Model } = require("sequelize");
 
 module.exports = (sequelize, DataTypes) => {
   class Usuario extends Model {
     static associate(models) {
+      // Associação com Professor
       this.hasOne(models.Professor, {
         foreignKey: "id_usuario",
-        as: "dadosProfessor", // Apelido para a relação
+        as: "dadosProfessor",
       });
 
-      // depois adicionar a associação para Aluno aqui também
-      // this.hasOne(models.Aluno, { ... });
+      // Associação com Aluno
+      this.hasOne(models.Aluno, {
+        foreignKey: "id_usuario",
+        as: "dadosAluno",
+      });
     }
   }
 
