@@ -6,6 +6,16 @@
         "resource": "usuarios",
         "methods": ["GET", "POST", "PATCH", "DELETE"],
         "action": "allow"
+      },
+      {
+        "resource": "professores",
+        "methods": ["POST", "GET", "PATCH", "DELETE"],
+        "action": "allow"
+      },
+      {
+        "resource": "alunos",
+        "methods": ["POST", "GET", "PATCH", "DELETE"],
+        "action": "allow"
       }
     ]
   },
@@ -18,7 +28,7 @@
         "action": "allow"
       },
       {
-        "resource": "usuarios",
+        "resource": "*",
         "methods": ["POST", "PATCH", "DELETE"],
         "action": "deny"
       }
@@ -33,7 +43,7 @@
         "action": "allow"
       },
       {
-        "resource": "usuarios",
+        "resource": "*",
         "methods": ["POST", "PATCH", "DELETE"],
         "action": "deny"
       }
@@ -44,7 +54,7 @@
     "permissions": [
       {
         "resource": "*",
-        "methods": [],
+        "methods": "*",
         "action": "deny"
       }
     ]
