@@ -4,6 +4,6 @@ const alunoController = require("../controllers/alunoController");
 const { authenticateToken, isAdmin } = require("../middleware/authToken");
 
 router.get("/", alunoController.listarAlunos);
-router.post("/", authenticateToken, isAdmin, alunoController.criarAluno);
+router.post("/", alunoController.criarAluno);
 
 module.exports = router;
