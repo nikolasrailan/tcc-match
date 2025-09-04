@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const acl = require("express-acl");
-const jwt = require("jsonwebtoken"); // <-- 1. IMPORTADO O JWT
+const jwt = require("jsonwebtoken");
 const aclConfig = require("./config/acl-config");
 
 app.use(cors());
@@ -19,7 +19,7 @@ app.use((req, res, next) => {
     return next();
   }
 
-  jwt.verify(token, "seu-segredo", (err, decodedPayload) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, decodedPayload) => {
     if (err) {
       console.error("Erro ao verificar token:", err.message);
       req.user = { role: "guest" };

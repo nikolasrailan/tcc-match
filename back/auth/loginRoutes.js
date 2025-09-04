@@ -23,9 +23,9 @@ router.post("/", async (req, res) => {
     const token = jwt.sign(
       {
         id: usuario.id_usuario,
-        role: usuario.isAdmin ? "admin" : "aluno", // Define papel baseado no isAdmin
+        role: usuario.isAdmin ? "admin" : "aluno",
       },
-      "seu-segredo", // Substitua por um segredo mais forte
+      process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
 

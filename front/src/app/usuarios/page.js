@@ -52,7 +52,7 @@ async function criarPerfil(tipo, dados, token) {
 
     if (!response.ok) {
       const erro = await response.json();
-      throw new Error(erro.error || `Erro ao criar ${tipo}.`);
+      throw new Error(erro.message || `Erro ao criar ${tipo}.`);
     }
     return await response.json();
   } catch (error) {
@@ -167,11 +167,18 @@ export default function UsuariosPage() {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box
+      sx={{
+        p: 3,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
       <Typography variant="h4" gutterBottom>
         Painel de Gerenciamento de Usuários
       </Typography>
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ width: "60%" }}>
         <Table sx={{ minWidth: 650 }} aria-label="tabela de usuarios">
           <TableHead>
             <TableRow>
