@@ -53,8 +53,13 @@
     "group": "guest",
     "permissions": [
       {
-        "resource": "*",
-        "methods": "*",
+        "resource": "usuarios",
+        "methods": ["POST"],
+        "action": "allow"
+      },
+      {
+        "resource": "usuarios",
+        "methods": ["GET", "PATCH", "DELETE"],
         "action": "deny"
       }
     ]

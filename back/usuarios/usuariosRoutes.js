@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { body, validationResult } = require("express-validator");
 
 const { Usuario, Professor, Aluno } = require("../models");
 const bcrypt = require("bcryptjs");
@@ -28,25 +29,52 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
-  const { nome, email, senha, isAdmin = 0 } = req.body;
+router.post(
+  "/",
+  [
+    body("nome").notEmpty().withMessage("O campo nome é obrigatório."),
+    body("email")
+      .isEmail()
+      .withMessage("Por favor, insira um e-mail válido.")
+      .custom(async (email) => {
+        const usuario = await Usuario.findOne({ where: { email } });
+        if (usuario) {
+          return Promise.reject("O e-mail informado já está em uso.");
+        }
+      }),
+    body("senha")
+      .isLength({ min: 6 })
+      .withMessage("A senha deve ter no mínimo 6 caracteres."),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  try {
-    const senhaHash = await bcrypt.hash(senha, 10);
+    const { nome, email, senha, isAdmin = 0 } = req.body;
 
-    const novoUsuario = await Usuario.create({
-      nome,
-      email,
-      senha: senhaHash,
-      isAdmin,
-    });
+    try {
+      const senhaHash = await bcrypt.hash(senha, 10);
 
-    res.status(201).json(novoUsuario);
-  } catch (error) {
-    console.error("Erro ao adicionar usuário: ", error);
-    res.status(500).send("Erro ao adicionar usuário");
+      const novoUsuario = await Usuario.create({
+        nome,
+        email,
+        senha: senhaHash,
+        isAdmin,
+      });
+
+      // Remove a senha do objeto de resposta
+      const usuarioSemSenha = novoUsuario.toJSON();
+      delete usuarioSemSenha.senha;
+
+      res.status(201).json(usuarioSemSenha);
+    } catch (error) {
+      console.error("Erro ao adicionar usuário: ", error);
+      res.status(500).send("Erro ao adicionar usuário");
+    }
   }
-});
+);
 
 router.patch("/:id/role", async (req, res) => {
   const { id } = req.params;
