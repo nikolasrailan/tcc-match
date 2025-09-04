@@ -19,7 +19,16 @@ export default function UsuarioCriar() {
         alert("Usuário registrado com sucesso!");
         await login(formData.email, formData.senha);
       } else {
-        alert("Erro ao criar usuário.");
+        const errorData = await registerResponse.json();
+        // Verifica se a resposta de erro contém o array de erros da validação
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const errorMessages = errorData.errors
+            .map((err) => err.msg)
+            .join("\n");
+          alert(`Erro ao criar usuário:\n${errorMessages}`);
+        } else {
+          alert("Erro ao criar usuário. Tente novamente.");
+        }
       }
     } catch (error) {
       console.error("Erro ao registrar usuário:", error);
