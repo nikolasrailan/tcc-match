@@ -3,6 +3,7 @@ const router = express.Router();
 const alunoController = require("../controllers/alunoController");
 const { authenticateToken, isAdmin } = require("../middleware/authToken");
 
+router.get("/", alunoController.listarAlunos);
 router.post("/", authenticateToken, isAdmin, alunoController.criarAluno);
 
 module.exports = router;

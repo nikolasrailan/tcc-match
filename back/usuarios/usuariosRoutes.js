@@ -1,12 +1,26 @@
 const express = require("express");
 const router = express.Router();
 
-const { Usuario } = require("../models");
+const { Usuario, Professor, Aluno } = require("../models");
 const bcrypt = require("bcryptjs");
 
 router.get("/", async (req, res) => {
   try {
-    const usuarios = await Usuario.findAll();
+    const usuarios = await Usuario.findAll({
+      include: [
+        {
+          model: Professor,
+          as: "dadosProfessor",
+          attributes: ["id_professor", "especializacao"],
+        },
+        {
+          model: Aluno,
+          as: "dadosAluno",
+          attributes: ["id_aluno", "matricula", "curso"],
+        },
+      ],
+      attributes: { exclude: ["senha"] },
+    });
     res.json(usuarios);
   } catch (error) {
     console.error("Erro ao buscar usuários: ", error);

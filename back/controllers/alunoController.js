@@ -44,6 +44,24 @@ const alunoController = {
         .json({ error: "Ocorreu um erro ao processar a requisição." });
     }
   },
+
+  async listarAlunos(req, res) {
+    try {
+      const alunos = await Aluno.findAll({
+        include: {
+          model: Usuario,
+          as: "dadosUsuario",
+          attributes: ["id_usuario", "nome", "email"],
+        },
+      });
+      return res.status(200).json(alunos);
+    } catch (error) {
+      console.error("Erro ao listar alunos:", error);
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao processar a requisição." });
+    }
+  },
 };
 
 module.exports = alunoController;

@@ -33,6 +33,23 @@ const professorController = {
         .json({ error: "Ocorreu um erro ao criar o perfil do professor." });
     }
   },
+  async listarProfessores(req, res) {
+    try {
+      const professores = await Professor.findAll({
+        include: {
+          model: Usuario,
+          as: "usuario",
+          attributes: ["id_usuario", "nome", "email"], // Apenas campos úteis
+        },
+      });
+      return res.status(200).json(professores);
+    } catch (error) {
+      console.error("Erro ao listar professores:", error);
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao processar a requisição." });
+    }
+  },
 
   // - listarProfessores
   // - atualizarProfessor
