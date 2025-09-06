@@ -6,6 +6,6 @@ const { authenticateToken, isAdmin } = require("../middleware/authToken");
 router.get("/", alunoController.listarAlunos);
 router.post("/", alunoController.criarAluno);
 
-router.patch("/:id", alunoController.atualizarAluno);
-router.delete("/:id", alunoController.deletarAluno);
+router.patch("/:id", authenticateToken, alunoController.atualizarAluno);
+router.delete("/:id", authenticateToken, alunoController.deletarAluno);
 module.exports = router;
