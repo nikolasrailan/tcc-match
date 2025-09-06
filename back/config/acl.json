@@ -28,6 +28,11 @@
         "action": "allow"
       },
       {
+        "resource": "alunos",
+        "methods": ["PATCH"],
+        "action": "allow"
+      },
+      {
         "resource": "*",
         "methods": ["POST", "PATCH", "DELETE"],
         "action": "deny"
@@ -40,6 +45,11 @@
       {
         "resource": "usuarios",
         "methods": ["GET"],
+        "action": "allow"
+      },
+      {
+        "resource": "professores",
+        "methods": ["PATCH"],
         "action": "allow"
       },
       {

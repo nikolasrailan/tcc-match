@@ -62,6 +62,70 @@ const alunoController = {
         .json({ error: "Ocorreu um erro ao processar a requisição." });
     }
   },
+
+  async atualizarAluno(req, res) {
+    const { id } = req.params;
+    const { matricula, curso } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === "admin";
+
+    try {
+      const aluno = await Aluno.findByPk(id);
+
+      if (!aluno) {
+        return res
+          .status(404)
+          .json({ error: "Perfil de aluno não encontrado." });
+      }
+
+      if (aluno.id_usuario !== userId && !isAdmin) {
+        return res
+          .status(403)
+          .json({
+            error: "Permissão negada. Você só pode editar seu próprio perfil.",
+          });
+      }
+
+      aluno.matricula = matricula ?? aluno.matricula;
+      aluno.curso = curso ?? aluno.curso;
+
+      await aluno.save();
+
+      return res.status(200).json(aluno);
+    } catch (error) {
+      console.error("Erro ao atualizar aluno:", error);
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao atualizar o perfil do aluno." });
+    }
+  },
+
+  async deletarAluno(req, res) {
+    const { id } = req.params;
+
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Acesso negado." });
+    }
+
+    try {
+      const numLinhasAfetadas = await Aluno.destroy({
+        where: { id_aluno: id },
+      });
+
+      if (numLinhasAfetadas === 0) {
+        return res
+          .status(404)
+          .json({ message: "Perfil de aluno não encontrado." });
+      }
+
+      res
+        .status(200)
+        .json({ message: "Perfil de aluno deletado com sucesso!" });
+    } catch (error) {
+      console.error("Erro ao deletar aluno:", error);
+      res.status(500).json({ message: "Erro ao deletar perfil de aluno." });
+    }
+  },
 };
 
 module.exports = alunoController;

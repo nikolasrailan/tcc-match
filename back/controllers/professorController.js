@@ -51,9 +51,72 @@ const professorController = {
     }
   },
 
-  // - listarProfessores
-  // - atualizarProfessor
-  // - deletarProfessor
+  async atualizarProfessor(req, res) {
+    const { id } = req.params;
+    const { disponibilidade, especializacao } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === "admin";
+
+    try {
+      const professor = await Professor.findByPk(id);
+
+      if (!professor) {
+        return res
+          .status(404)
+          .json({ error: "Perfil de professor não encontrado." });
+      }
+
+      if (professor.id_usuario !== userId && !isAdmin) {
+        return res.status(403).json({
+          error: "Permissão negada. Você só pode editar seu próprio perfil.",
+        });
+      }
+
+      // Atualiza os campos se eles foram fornecidos
+      if (disponibilidade !== undefined) {
+        professor.disponibilidade = disponibilidade;
+      }
+      if (especializacao) {
+        professor.especializacao = especializacao;
+      }
+
+      await professor.save();
+
+      return res.status(200).json(professor);
+    } catch (error) {
+      console.error("Erro ao atualizar professor:", error);
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao atualizar o perfil do professor." });
+    }
+  },
+
+  async deletarProfessor(req, res) {
+    const { id } = req.params; // id_professor
+
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Acesso negado." });
+    }
+
+    try {
+      const numLinhasAfetadas = await Professor.destroy({
+        where: { id_professor: id },
+      });
+
+      if (numLinhasAfetadas === 0) {
+        return res
+          .status(404)
+          .json({ message: "Perfil de professor não encontrado." });
+      }
+
+      res
+        .status(200)
+        .json({ message: "Perfil de professor deletado com sucesso!" });
+    } catch (error) {
+      console.error("Erro ao deletar professor:", error);
+      res.status(500).json({ message: "Erro ao deletar perfil de professor." });
+    }
+  },
 };
 
 module.exports = professorController;

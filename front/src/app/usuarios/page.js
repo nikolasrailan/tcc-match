@@ -17,50 +17,14 @@ import {
   TextField,
 } from "@mui/material";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-
-// Função para buscar os usuários da API
-async function getUsuarios(token) {
-  try {
-    const response = await fetch("http://localhost:8000/usuarios", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Erro ao buscar usuários. Verifique sua autorização.");
-    }
-    return await response.json();
-  } catch (error) {
-    console.error("Erro na requisição de usuários:", error);
-    alert(error.message);
-    return [];
-  }
-}
-
-// Funções para criar professor/aluno
-async function criarPerfil(tipo, dados, token) {
-  const endpoint = tipo === "professor" ? "/professores" : "/alunos";
-  try {
-    const response = await fetch(`http://localhost:8000${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(dados),
-    });
-
-    if (!response.ok) {
-      const erro = await response.json();
-      throw new Error(erro.message || `Erro ao criar ${tipo}.`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Erro ao criar ${tipo}:`, error);
-    alert(error.message);
-    return null;
-  }
-}
+import {
+  getUsuarios,
+  criarPerfil,
+  deleteUsuario,
+  updateUsuario,
+  deleteAlunoProfile,
+  deleteProfessorProfile,
+} from "@/api/apiService";
 
 // Estilo para o Modal
 const styleModal = {
@@ -83,15 +47,17 @@ export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [usuarioSelecionado, setUsuarioSelecionado] = useState(null);
   const [tipoPerfil, setTipoPerfil] = useState(""); // 'aluno' ou 'professor'
   const [dadosPerfil, setDadosPerfil] = useState({});
+  const [dadosEdicao, setDadosEdicao] = useState({});
 
   const fetchUsuarios = useCallback(async () => {
     setLoading(true);
-    const token = localStorage.getItem("token");
-    if (token) {
-      const data = await getUsuarios(token);
+    const data = await getUsuarios();
+    if (data) {
       setUsuarios(data);
     }
     setLoading(false);
@@ -104,19 +70,15 @@ export default function UsuariosPage() {
   const handleOpenModal = (usuario, tipo) => {
     setUsuarioSelecionado(usuario);
     setTipoPerfil(tipo);
-    if (tipo === "aluno") {
-      setDadosPerfil({
-        matricula: "",
-        curso: "",
-        id_usuario: usuario.id_usuario,
-      });
-    } else {
-      setDadosPerfil({
-        disponibilidade: 1,
-        especializacao: "",
-        id_usuario: usuario.id_usuario,
-      });
-    }
+    setDadosPerfil(
+      tipo === "aluno"
+        ? { matricula: "", curso: "", id_usuario: usuario.id_usuario }
+        : {
+            disponibilidade: 1,
+            especializacao: "",
+            id_usuario: usuario.id_usuario,
+          }
+    );
     setModalOpen(true);
   };
 
@@ -126,14 +88,35 @@ export default function UsuariosPage() {
     setDadosPerfil({});
   };
 
-  const handleInputChange = (e) => {
-    setDadosPerfil({ ...dadosPerfil, [e.target.name]: e.target.value });
+  const handleOpenEditModal = (usuario) => {
+    setUsuarioSelecionado(usuario);
+    setDadosEdicao({ nome: usuario.nome, email: usuario.email });
+    setEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setUsuarioSelecionado(null);
+    setDadosEdicao({});
+  };
+
+  const handleOpenDeleteModal = (usuario) => {
+    setUsuarioSelecionado(usuario);
+    setDeleteModalOpen(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setUsuarioSelecionado(null);
+  };
+
+  const handleInputChange = (e, setData) => {
+    setData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmitModal = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem("token");
-    const sucesso = await criarPerfil(tipoPerfil, dadosPerfil, token);
+    const sucesso = await criarPerfil(tipoPerfil, dadosPerfil);
     if (sucesso) {
       alert(
         `${
@@ -145,16 +128,51 @@ export default function UsuariosPage() {
     }
   };
 
-  const getStatusChip = (usuario) => {
-    if (usuario.isAdmin) {
-      return <Chip label="Admin" color="secondary" />;
+  const handleSubmitEditModal = async (e) => {
+    e.preventDefault();
+    if (!usuarioSelecionado) return;
+    const sucesso = await updateUsuario(
+      usuarioSelecionado.id_usuario,
+      dadosEdicao
+    );
+    if (sucesso) {
+      alert("Usuário atualizado com sucesso!");
+      handleCloseEditModal();
+      fetchUsuarios();
     }
-    if (usuario.dadosProfessor) {
-      return <Chip label="Professor" color="primary" />;
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!usuarioSelecionado) return;
+    const sucesso = await deleteUsuario(usuarioSelecionado.id_usuario);
+    if (sucesso) {
+      alert("Usuário desativado com sucesso!");
+      handleCloseDeleteModal();
+      fetchUsuarios();
     }
+  };
+
+  const handleRemoveProfile = async (usuario) => {
+    let sucesso = false;
     if (usuario.dadosAluno) {
-      return <Chip label="Aluno" color="success" />;
+      sucesso = await deleteAlunoProfile(usuario.dadosAluno.id_aluno);
+    } else if (usuario.dadosProfessor) {
+      sucesso = await deleteProfessorProfile(
+        usuario.dadosProfessor.id_professor
+      );
     }
+
+    if (sucesso) {
+      alert("Perfil removido com sucesso!");
+      fetchUsuarios();
+    }
+  };
+
+  const getStatusChip = (usuario) => {
+    if (usuario.isAdmin) return <Chip label="Admin" color="secondary" />;
+    if (usuario.dadosProfessor)
+      return <Chip label="Professor" color="primary" />;
+    if (usuario.dadosAluno) return <Chip label="Aluno" color="success" />;
     return <Chip label="Nenhum" variant="outlined" />;
   };
 
@@ -178,7 +196,10 @@ export default function UsuariosPage() {
       <Typography variant="h4" gutterBottom>
         Painel de Gerenciamento de Usuários
       </Typography>
-      <TableContainer component={Paper} sx={{ width: "60%" }}>
+      <TableContainer
+        component={Paper}
+        sx={{ maxWidth: "80%", margin: "auto" }}
+      >
         <Table sx={{ minWidth: 650 }} aria-label="tabela de usuarios">
           <TableHead>
             <TableRow>
@@ -197,33 +218,62 @@ export default function UsuariosPage() {
                 <TableCell>{usuario.email}</TableCell>
                 <TableCell>{getStatusChip(usuario)}</TableCell>
                 <TableCell align="center">
-                  {!usuario.dadosProfessor &&
-                    !usuario.dadosAluno &&
-                    !usuario.isAdmin && (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 1,
-                          justifyContent: "center",
-                        }}
+                  <Box
+                    sx={{ display: "flex", gap: 1, justifyContent: "center" }}
+                  >
+                    {!usuario.dadosProfessor &&
+                      !usuario.dadosAluno &&
+                      !usuario.isAdmin && (
+                        <>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            onClick={() => handleOpenModal(usuario, "aluno")}
+                          >
+                            Tornar Aluno
+                          </Button>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            color="info"
+                            onClick={() =>
+                              handleOpenModal(usuario, "professor")
+                            }
+                          >
+                            Tornar Prof.
+                          </Button>
+                        </>
+                      )}
+                    {(usuario.dadosAluno || usuario.dadosProfessor) &&
+                      !usuario.isAdmin && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="warning"
+                          onClick={() => handleRemoveProfile(usuario)}
+                        >
+                          Rem. Perfil
+                        </Button>
+                      )}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="primary"
+                      onClick={() => handleOpenEditModal(usuario)}
+                    >
+                      Editar
+                    </Button>
+                    {!usuario.isAdmin && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="error"
+                        onClick={() => handleOpenDeleteModal(usuario)}
                       >
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => handleOpenModal(usuario, "aluno")}
-                        >
-                          Tornar Aluno
-                        </Button>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          color="secondary"
-                          onClick={() => handleOpenModal(usuario, "professor")}
-                        >
-                          Tornar Professor
-                        </Button>
-                      </Box>
+                        Excluir
+                      </Button>
                     )}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -231,13 +281,10 @@ export default function UsuariosPage() {
         </Table>
       </TableContainer>
 
-      <Modal
-        open={modalOpen}
-        onClose={handleCloseModal}
-        aria-labelledby="modal-title"
-      >
+      {/* Modal para criar perfil */}
+      <Modal open={modalOpen} onClose={handleCloseModal}>
         <Box sx={styleModal} component="form" onSubmit={handleSubmitModal}>
-          <Typography id="modal-title" variant="h6" component="h2">
+          <Typography variant="h6">
             Tornar {usuarioSelecionado?.nome} um {tipoPerfil}
           </Typography>
           {tipoPerfil === "aluno" ? (
@@ -245,33 +292,84 @@ export default function UsuariosPage() {
               <TextField
                 name="matricula"
                 label="Matrícula"
-                onChange={handleInputChange}
+                onChange={(e) => handleInputChange(e, setDadosPerfil)}
                 required
                 fullWidth
               />
               <TextField
                 name="curso"
                 label="Curso"
-                onChange={handleInputChange}
+                onChange={(e) => handleInputChange(e, setDadosPerfil)}
                 required
                 fullWidth
               />
             </>
           ) : (
-            <>
-              <TextField
-                name="especializacao"
-                label="Especialização"
-                onChange={handleInputChange}
-                required
-                fullWidth
-              />
-              {/* O campo disponibilidade está fixo como 1 (disponível) por simplicidade */}
-            </>
+            <TextField
+              name="especializacao"
+              label="Especialização"
+              onChange={(e) => handleInputChange(e, setDadosPerfil)}
+              required
+              fullWidth
+            />
           )}
           <Button type="submit" variant="contained">
             Confirmar
           </Button>
+        </Box>
+      </Modal>
+
+      {/* Modal para editar usuário */}
+      <Modal open={editModalOpen} onClose={handleCloseEditModal}>
+        <Box sx={styleModal} component="form" onSubmit={handleSubmitEditModal}>
+          <Typography variant="h6">
+            Editar Usuário: {usuarioSelecionado?.nome}
+          </Typography>
+          <TextField
+            name="nome"
+            label="Nome"
+            value={dadosEdicao.nome || ""}
+            onChange={(e) => handleInputChange(e, setDadosEdicao)}
+            required
+            fullWidth
+          />
+          <TextField
+            name="email"
+            label="Email"
+            type="email"
+            value={dadosEdicao.email || ""}
+            onChange={(e) => handleInputChange(e, setDadosEdicao)}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="contained">
+            Salvar Alterações
+          </Button>
+        </Box>
+      </Modal>
+
+      {/* Modal de confirmação de exclusão */}
+      <Modal open={deleteModalOpen} onClose={handleCloseDeleteModal}>
+        <Box sx={styleModal}>
+          <Typography variant="h6">Confirmar Exclusão</Typography>
+          <Typography>
+            Tem certeza que deseja desativar a conta de{" "}
+            {usuarioSelecionado?.nome}? Esta ação não pode ser desfeita.
+          </Typography>
+          <Box
+            sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}
+          >
+            <Button variant="text" onClick={handleCloseDeleteModal}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleConfirmDelete}
+            >
+              Confirmar
+            </Button>
+          </Box>
         </Box>
       </Modal>
     </Box>
