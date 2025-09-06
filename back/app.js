@@ -2,36 +2,19 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const acl = require("express-acl");
-const jwt = require("jsonwebtoken");
-const aclConfig = require("./config/acl-config");
+// const acl = require("express-acl"); // Removido
+// const jwt = require("jsonwebtoken"); // Não é mais necessário aqui
+// const aclConfig = require("./config/acl-config"); // Removido
 
 app.use(cors());
 app.use(express.json());
 
-acl.config(aclConfig);
+// acl.config(aclConfig); // Removido
 
-app.use((req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+// Middleware global de ACL foi removido para simplificar a autorização
+// A verificação agora é feita pelo 'authenticateToken' em cada rota protegida
 
-  if (!token) {
-    req.user = { role: "guest" };
-    return next();
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decodedPayload) => {
-    if (err) {
-      console.error("Erro ao verificar token:", err.message);
-      req.user = { role: "guest" };
-    } else {
-      req.user = decodedPayload;
-    }
-    next();
-  });
-});
-
-app.use(acl.authorize.unless({ path: ["/login", "/register"] }));
+// app.use(acl.authorize.unless({ path: ["/login", "/register"] })); // Removido
 
 const usuariosRoutes = require("./usuarios/usuariosRoutes");
 const loginRoutes = require("./auth/loginRoutes");
