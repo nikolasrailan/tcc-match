@@ -7,7 +7,7 @@ import {
   deletarIdeiaTcc,
   atualizarIdeiaTcc,
 } from "@/api/apiService";
-import IdeiaTccForm from "@/app/components/aluno/ideiatccForm";
+import IdeiaTccForm from "@/app/components/aluno/ideiaTccForm";
 import MinhaIdeiaTccDisplay from "@/app/components/aluno/MinhaIdeiaTccDisplay";
 import {
   Box,
@@ -15,19 +15,24 @@ import {
   Typography,
   Grid,
   Divider,
+  Alert,
 } from "@mui/material";
 
-export default function MinhasIdeiasPage() {
+export default function AlunoPage() {
   useAuthRedirect();
   const [ideiasTcc, setIdeiasTcc] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingIdeia, setEditingIdeia] = useState(null);
+  const [error, setError] = useState(null);
 
   const fetchIdeiasTcc = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const data = await getMinhaIdeiaTcc();
     if (data && Array.isArray(data)) {
       setIdeiasTcc(data);
+    } else if (data === null) {
+      setError("Você precisa ter um perfil de aluno para acessar esta página.");
     }
     setLoading(false);
   }, []);
@@ -40,7 +45,7 @@ export default function MinhasIdeiasPage() {
     const novaIdeia = await criarIdeiaTcc(formData);
     if (novaIdeia) {
       alert("Ideia de TCC criada com sucesso!");
-      fetchIdeiasTcc(); // Recarrega a lista
+      fetchIdeiasTcc();
     }
   };
 
@@ -52,17 +57,18 @@ export default function MinhasIdeiasPage() {
     );
     if (ideiaAtualizada) {
       alert("Ideia de TCC atualizada com sucesso!");
-      setEditingIdeia(null); // Sai do modo de edição
-      fetchIdeiasTcc(); // Recarrega a lista
+      setEditingIdeia(null);
+      fetchIdeiasTcc();
     }
   };
 
   const handleDelete = async (ideiaId) => {
-    if (window.confirm("Tem certeza que deseja excluir esta ideia de TCC?")) {
+    const confirmed = true;
+    if (confirmed) {
       const result = await deletarIdeiaTcc(ideiaId);
       if (result) {
         alert("Ideia de TCC excluída com sucesso!");
-        fetchIdeiasTcc(); // Recarrega a lista
+        fetchIdeiasTcc();
       }
     }
   };
@@ -86,36 +92,46 @@ export default function MinhasIdeiasPage() {
   return (
     <Box sx={{ p: 3, maxWidth: "900px", margin: "auto" }}>
       <Typography variant="h4" gutterBottom>
-        {editingIdeia ? "Editando Ideia" : "Cadastrar Nova Ideia"}
+        Minhas Ideias de TCC
       </Typography>
 
-      <IdeiaTccForm
-        onSubmit={editingIdeia ? handleUpdate : handleCreate}
-        initialData={editingIdeia}
-        onCancel={editingIdeia ? handleCancelEdit : null}
-        key={editingIdeia ? editingIdeia.id_ideia_tcc : "new"}
-      />
+      {error && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-      <Divider sx={{ my: 4 }}>
-        <Typography variant="h5">Minhas Ideias Cadastradas</Typography>
-      </Divider>
+      {!error && (
+        <>
+          <IdeiaTccForm
+            onSubmit={editingIdeia ? handleUpdate : handleCreate}
+            initialData={editingIdeia}
+            onCancel={editingIdeia ? handleCancelEdit : null}
+            key={editingIdeia ? editingIdeia.id_ideia_tcc : "new"}
+          />
 
-      {ideiasTcc.length > 0 ? (
-        <Grid container spacing={3}>
-          {ideiasTcc.map((ideia) => (
-            <Grid item xs={12} md={6} key={ideia.id_ideia_tcc}>
-              <MinhaIdeiaTccDisplay
-                ideiaTcc={ideia}
-                onEdit={() => handleStartEdit(ideia)}
-                onDelete={() => handleDelete(ideia.id_ideia_tcc)}
-              />
+          <Divider sx={{ my: 4 }}>
+            <Typography variant="h5">Minhas Propostas</Typography>
+          </Divider>
+
+          {ideiasTcc.length > 0 ? (
+            <Grid container spacing={3}>
+              {ideiasTcc.map((ideia) => (
+                <Grid item xs={12} md={6} key={ideia.id_ideia_tcc}>
+                  <MinhaIdeiaTccDisplay
+                    ideiaTcc={ideia}
+                    onEdit={() => handleStartEdit(ideia)}
+                    onDelete={() => handleDelete(ideia.id_ideia_tcc)}
+                  />
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
-      ) : (
-        <Typography sx={{ textAlign: "center", mt: 2 }}>
-          Você ainda não cadastrou nenhuma ideia de TCC.
-        </Typography>
+          ) : (
+            <Typography sx={{ textAlign: "center", mt: 2 }}>
+              Você ainda não cadastrou nenhuma ideia de TCC.
+            </Typography>
+          )}
+        </>
       )}
     </Box>
   );

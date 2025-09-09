@@ -15,12 +15,24 @@ export default function useAuth() {
       });
 
       if (response.ok) {
-        const { token } = await response.json();
+        const { token, user } = await response.json();
         localStorage.setItem("token", token);
-        router.push("/usuarios");
+        localStorage.setItem("user", JSON.stringify(user));
+
+        if (user.isAdmin) {
+          router.push("/usuarios");
+        } else if (user.dadosProfessor) {
+          router.push("/professor");
+        } else if (user.dadosAluno) {
+          router.push("/aluno");
+        } else {
+          router.push("/");
+        }
         return true;
       } else {
-        alert("Erro ao fazer login.");
+        // Limpa dados antigos em caso de falha
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
         return false;
       }
     } catch (error) {
@@ -30,5 +42,11 @@ export default function useAuth() {
     }
   };
 
-  return { login };
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
+
+  return { login, logout };
 }

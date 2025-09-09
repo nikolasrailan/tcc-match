@@ -1,4 +1,4 @@
-const { IdeiaTcc, Aluno } = require("../models");
+const { IdeiaTcc, Aluno, Usuario } = require("../models");
 
 const ideiaTccController = {
   async criarIdeiaTcc(req, res) {
@@ -50,6 +50,33 @@ const ideiaTccController = {
     } catch (error) {
       console.error("Erro ao buscar ideias de TCC:", error);
       res.status(500).json({ error: "Erro ao buscar ideias de TCC." });
+    }
+  },
+
+  async listarTodasIdeias(req, res) {
+    try {
+      const userRole = req.user.role;
+      if (userRole !== "admin" && userRole !== "professor") {
+        return res.status(403).json({ error: "Acesso negado." });
+      }
+
+      const ideias = await IdeiaTcc.findAll({
+        include: {
+          model: Aluno,
+          as: "aluno",
+          include: {
+            model: Usuario,
+            as: "dadosUsuario",
+            attributes: ["nome", "email"],
+          },
+        },
+        order: [["data_submissao", "DESC"]],
+      });
+
+      res.status(200).json(ideias);
+    } catch (error) {
+      console.error("Erro ao listar todas as ideias de TCC:", error);
+      res.status(500).json({ error: "Erro ao processar a requisição." });
     }
   },
 
