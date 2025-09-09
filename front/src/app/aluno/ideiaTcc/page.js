@@ -7,7 +7,7 @@ import {
   deletarIdeiaTcc,
   atualizarIdeiaTcc,
 } from "@/api/apiService";
-import IdeiaTccForm from "@/app/components/aluno/ideiaTccForm";
+import IdeiaTccForm from "@/app/components/aluno/ideiatccForm";
 import MinhaIdeiaTccDisplay from "@/app/components/aluno/MinhaIdeiaTccDisplay";
 import {
   Box,
