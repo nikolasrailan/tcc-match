@@ -78,3 +78,23 @@ export const deleteProfessorProfile = (id) =>
   fetchApi(`/professores/${id}`, {
     method: "DELETE",
   });
+
+// --- Funções de Ideia de TCC ---
+export const getMinhaIdeiaTcc = () => fetchApi("/ideias-tcc/minha-ideia");
+
+export const criarIdeiaTcc = (dados) =>
+  fetchApi("/ideias-tcc", {
+    method: "POST",
+    body: JSON.stringify(dados),
+  });
+
+export const atualizarIdeiaTcc = (id, dados) =>
+  fetchApi(`/ideias-tcc/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dados),
+  });
+
+export const deletarIdeiaTcc = (id) =>
+  fetchApi(`/ideias-tcc/${id}`, {
+    method: "DELETE",
+  });

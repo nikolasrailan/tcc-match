@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 
-export default function IdeiaTccForm({
+export default function ideiaTccForm({
   onSubmit,
   initialData = null,
   onCancel = null,

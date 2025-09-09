@@ -13,15 +13,6 @@ const ideiaTccController = {
           .json({ error: "Apenas alunos podem criar propostas." });
       }
 
-      const ideiaExistente = await IdeiaTcc.findOne({
-        where: { id_aluno: aluno.id_aluno },
-      });
-      if (ideiaExistente) {
-        return res
-          .status(400)
-          .json({ error: "Você já possui uma ideia cadastrada." });
-      }
-
       const novaIdeia = await IdeiaTcc.create({
         titulo,
         descricao,
@@ -50,18 +41,15 @@ const ideiaTccController = {
           .json({ message: "Perfil de aluno não encontrado." });
       }
 
-      const ideiaTcc = await IdeiaTcc.findOne({
+      const ideiasTcc = await IdeiaTcc.findAll({
         where: { id_aluno: aluno.id_aluno },
+        order: [["data_submissao", "DESC"]],
       });
 
-      if (!ideiaTcc) {
-        return res.status(200).json(null);
-      }
-
-      res.status(200).json(ideiaTcc);
+      res.status(200).json(ideiasTcc);
     } catch (error) {
-      console.error("Erro ao buscar ideia de TCC:", error);
-      res.status(500).json({ error: "Erro ao buscar ideia de TCC." });
+      console.error("Erro ao buscar ideias de TCC:", error);
+      res.status(500).json({ error: "Erro ao buscar ideias de TCC." });
     }
   },
 
@@ -78,19 +66,15 @@ const ideiaTccController = {
 
       const ideiaTcc = await IdeiaTcc.findByPk(idIdeia);
       if (!ideiaTcc || ideiaTcc.id_aluno !== aluno.id_aluno) {
-        return res
-          .status(404)
-          .json({
-            error: "Ideia de TCC não encontrada ou não pertence a você.",
-          });
+        return res.status(404).json({
+          error: "Ideia de TCC não encontrada ou não pertence a você.",
+        });
       }
 
       if (ideiaTcc.status !== 0) {
-        return res
-          .status(403)
-          .json({
-            error: "Não é possível editar uma proposta que já foi avaliada.",
-          });
+        return res.status(403).json({
+          error: "Não é possível editar uma proposta que já foi avaliada.",
+        });
       }
 
       await ideiaTcc.update({ titulo, descricao });
@@ -113,19 +97,15 @@ const ideiaTccController = {
 
       const ideiaTcc = await IdeiaTcc.findByPk(idIdeia);
       if (!ideiaTcc || ideiaTcc.id_aluno !== aluno.id_aluno) {
-        return res
-          .status(404)
-          .json({
-            error: "Ideia de TCC não encontrada ou não pertence a você.",
-          });
+        return res.status(404).json({
+          error: "Ideia de TCC não encontrada ou não pertence a você.",
+        });
       }
 
       if (ideiaTcc.status !== 0) {
-        return res
-          .status(403)
-          .json({
-            error: "Não é possível excluir uma proposta que já foi avaliada.",
-          });
+        return res.status(403).json({
+          error: "Não é possível excluir uma proposta que já foi avaliada.",
+        });
       }
 
       await ideiaTcc.destroy();

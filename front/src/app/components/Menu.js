@@ -15,6 +15,9 @@ export default function Menu() {
       <li>
         <Link href="/usuarios/criar">Registrar-se</Link>
       </li>
+      <li>
+        <Link href="/aluno/ideiaTcc">Minha Ideia de TCC</Link>
+      </li>
     </ul>
   );
 }

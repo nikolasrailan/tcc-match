@@ -1,13 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const ideiaTccController = require("../controllers/ideiaTccController");
+const ideiaTcc = require("../controllers/ideiaTcc"); // Nome corrigido
 const { authenticateToken } = require("../middleware/authToken");
 
 router.use(authenticateToken);
 
-router.get("/minha-ideia", ideiaTccController.getMinhaIdeiaTcc);
-router.post("/", ideiaTccController.criarIdeiaTcc);
-router.patch("/:id", ideiaTccController.atualizarIdeiaTcc);
-router.delete("/:id", ideiaTccController.deletarIdeiaTcc);
+router.get("/minha-ideia", ideiaTcc.getMinhaIdeiaTcc);
+router.post("/", ideiaTcc.criarIdeiaTcc);
+router.patch("/:id", ideiaTcc.atualizarIdeiaTcc);
+router.delete("/:id", ideiaTcc.deletarIdeiaTcc);
 
 module.exports = router;

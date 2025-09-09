@@ -7,59 +7,72 @@ import {
   deletarIdeiaTcc,
   atualizarIdeiaTcc,
 } from "@/api/apiService";
-import IdeiaTccForm from "@/app/components/aluno/IdeiaTccForm";
+import IdeiaTccForm from "@/app/components/aluno/ideiaTccForm";
 import MinhaIdeiaTccDisplay from "@/app/components/aluno/MinhaIdeiaTccDisplay";
-import { Box, CircularProgress, Typography } from "@mui/material";
+import {
+  Box,
+  CircularProgress,
+  Typography,
+  Grid,
+  Divider,
+} from "@mui/material";
 
-export default function MinhaIdeiaPage() {
+export default function MinhasIdeiasPage() {
   useAuthRedirect();
-  const [ideiaTcc, setIdeiaTcc] = useState(null);
+  const [ideiasTcc, setIdeiasTcc] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingIdeia, setEditingIdeia] = useState(null);
 
-  const fetchIdeiaTcc = useCallback(async () => {
+  const fetchIdeiasTcc = useCallback(async () => {
     setLoading(true);
     const data = await getMinhaIdeiaTcc();
-    setIdeiaTcc(data);
+    if (data && Array.isArray(data)) {
+      setIdeiasTcc(data);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchIdeiaTcc();
-  }, [fetchIdeiaTcc]);
+    fetchIdeiasTcc();
+  }, [fetchIdeiasTcc]);
 
   const handleCreate = async (formData) => {
     const novaIdeia = await criarIdeiaTcc(formData);
     if (novaIdeia) {
       alert("Ideia de TCC criada com sucesso!");
-      fetchIdeiaTcc();
+      fetchIdeiasTcc(); // Recarrega a lista
     }
   };
 
   const handleUpdate = async (formData) => {
-    if (!ideiaTcc) return;
+    if (!editingIdeia) return;
     const ideiaAtualizada = await atualizarIdeiaTcc(
-      ideiaTcc.id_ideia_tcc,
+      editingIdeia.id_ideia_tcc,
       formData
     );
     if (ideiaAtualizada) {
       alert("Ideia de TCC atualizada com sucesso!");
-      setIsEditing(false);
-      fetchIdeiaTcc();
+      setEditingIdeia(null); // Sai do modo de edição
+      fetchIdeiasTcc(); // Recarrega a lista
     }
   };
 
-  const handleDelete = async () => {
-    if (
-      ideiaTcc &&
-      window.confirm("Tem certeza que deseja excluir sua ideia de TCC?")
-    ) {
-      const result = await deletarIdeiaTcc(ideiaTcc.id_ideia_tcc);
+  const handleDelete = async (ideiaId) => {
+    if (window.confirm("Tem certeza que deseja excluir esta ideia de TCC?")) {
+      const result = await deletarIdeiaTcc(ideiaId);
       if (result) {
         alert("Ideia de TCC excluída com sucesso!");
-        fetchIdeiaTcc();
+        fetchIdeiasTcc(); // Recarrega a lista
       }
     }
+  };
+
+  const handleStartEdit = (ideia) => {
+    setEditingIdeia(ideia);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingIdeia(null);
   };
 
   if (loading) {
@@ -71,31 +84,38 @@ export default function MinhaIdeiaPage() {
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: "800px", margin: "auto" }}>
+    <Box sx={{ p: 3, maxWidth: "900px", margin: "auto" }}>
       <Typography variant="h4" gutterBottom>
-        Minha Ideia de TCC
+        {editingIdeia ? "Editando Ideia" : "Cadastrar Nova Ideia"}
       </Typography>
-      {ideiaTcc ? (
-        isEditing ? (
-          <IdeiaTccForm
-            onSubmit={handleUpdate}
-            initialData={ideiaTcc}
-            onCancel={() => setIsEditing(false)}
-          />
-        ) : (
-          <MinhaIdeiaTccDisplay
-            ideiaTcc={ideiaTcc}
-            onEdit={() => setIsEditing(true)}
-            onDelete={handleDelete}
-          />
-        )
+
+      <IdeiaTccForm
+        onSubmit={editingIdeia ? handleUpdate : handleCreate}
+        initialData={editingIdeia}
+        onCancel={editingIdeia ? handleCancelEdit : null}
+        key={editingIdeia ? editingIdeia.id_ideia_tcc : "new"}
+      />
+
+      <Divider sx={{ my: 4 }}>
+        <Typography variant="h5">Minhas Ideias Cadastradas</Typography>
+      </Divider>
+
+      {ideiasTcc.length > 0 ? (
+        <Grid container spacing={3}>
+          {ideiasTcc.map((ideia) => (
+            <Grid item xs={12} md={6} key={ideia.id_ideia_tcc}>
+              <MinhaIdeiaTccDisplay
+                ideiaTcc={ideia}
+                onEdit={() => handleStartEdit(ideia)}
+                onDelete={() => handleDelete(ideia.id_ideia_tcc)}
+              />
+            </Grid>
+          ))}
+        </Grid>
       ) : (
-        <>
-          <Typography sx={{ mb: 2 }}>
-            Você ainda não cadastrou uma ideia de TCC.
-          </Typography>
-          <IdeiaTccForm onSubmit={handleCreate} />
-        </>
+        <Typography sx={{ textAlign: "center", mt: 2 }}>
+          Você ainda não cadastrou nenhuma ideia de TCC.
+        </Typography>
       )}
     </Box>
   );
