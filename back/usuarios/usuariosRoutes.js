@@ -1,18 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
-
-const { Usuario, Professor, Aluno } = require("../models");
+const { Usuario, Professor, Aluno, sequelize } = require("../models");
 const bcrypt = require("bcryptjs");
+const { authenticateToken, isAdmin } = require("../middleware/authToken");
 
-router.get("/", async (req, res) => {
+router.get("/", authenticateToken, isAdmin, async (req, res) => {
   try {
     const usuarios = await Usuario.findAll({
       include: [
         {
           model: Professor,
           as: "dadosProfessor",
-          attributes: ["id_professor", "especializacao"],
+          attributes: ["id_professor", "especializacao", "disponibilidade"],
         },
         {
           model: Aluno,
@@ -76,7 +76,7 @@ router.post(
   }
 );
 
-router.patch("/:id/role", async (req, res) => {
+router.patch("/:id/role", authenticateToken, isAdmin, async (req, res) => {
   const { id } = req.params;
   const { role } = req.body;
 
@@ -97,42 +97,86 @@ router.patch("/:id/role", async (req, res) => {
   }
 });
 
-router.patch("/:id", async (req, res) => {
-  const { id } = req.params;
-  const { nome, email, senha, isAdmin } = req.body;
-
+router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    const dadosParaAtualizar = {};
-    if (nome) dadosParaAtualizar.nome = nome;
-    if (email) dadosParaAtualizar.email = email;
-    if (isAdmin !== undefined) dadosParaAtualizar.isAdmin = isAdmin;
+    const { id } = req.params;
+    const {
+      nome,
+      email,
+      senha,
+      isAdmin,
+      matricula,
+      curso,
+      especializacao,
+      disponibilidade,
+    } = req.body;
 
-    if (senha) {
-      dadosParaAtualizar.senha = await bcrypt.hash(senha, 10);
-    }
-
-    const [numLinhasAfetadas] = await Usuario.update(dadosParaAtualizar, {
-      where: { id_usuario: id },
+    const usuario = await Usuario.findByPk(id, {
+      include: ["dadosAluno", "dadosProfessor"],
+      transaction: t,
     });
 
-    if (numLinhasAfetadas === 0) {
+    if (!usuario) {
+      await t.rollback();
       return res.status(404).json({ message: "Usuário não encontrado" });
     }
 
-    res.status(200).json({ message: "Usuário atualizado com sucesso!" });
-  } catch (error) {
-    if (error.name === "SequelizeUniqueConstraintError") {
-      return res.status(409).json({
-        message: "O e-mail informado já está em uso por outro usuário.",
-      });
+    // Atualiza dados do usuário base
+    const dadosUsuarioParaAtualizar = {};
+    if (nome !== undefined) dadosUsuarioParaAtualizar.nome = nome;
+    if (email !== undefined) dadosUsuarioParaAtualizar.email = email;
+    if (isAdmin !== undefined) dadosUsuarioParaAtualizar.isAdmin = isAdmin;
+    if (senha) {
+      dadosUsuarioParaAtualizar.senha = await bcrypt.hash(senha, 10);
     }
 
+    if (Object.keys(dadosUsuarioParaAtualizar).length > 0) {
+      await usuario.update(dadosUsuarioParaAtualizar, { transaction: t });
+    }
+
+    // Atualiza perfil de Aluno, se existir
+    if (usuario.dadosAluno) {
+      const dadosAlunoParaAtualizar = {};
+      if (matricula !== undefined)
+        dadosAlunoParaAtualizar.matricula = matricula;
+      if (curso !== undefined) dadosAlunoParaAtualizar.curso = curso;
+      if (Object.keys(dadosAlunoParaAtualizar).length > 0) {
+        await usuario.dadosAluno.update(dadosAlunoParaAtualizar, {
+          transaction: t,
+        });
+      }
+    }
+
+    // Atualiza perfil de Professor, se existir
+    if (usuario.dadosProfessor) {
+      const dadosProfessorParaAtualizar = {};
+      if (especializacao !== undefined)
+        dadosProfessorParaAtualizar.especializacao = especializacao;
+      if (disponibilidade !== undefined)
+        dadosProfessorParaAtualizar.disponibilidade = disponibilidade;
+      if (Object.keys(dadosProfessorParaAtualizar).length > 0) {
+        await usuario.dadosProfessor.update(dadosProfessorParaAtualizar, {
+          transaction: t,
+        });
+      }
+    }
+
+    await t.commit();
+    res.status(200).json({ message: "Usuário atualizado com sucesso!" });
+  } catch (error) {
+    await t.rollback();
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({
+        message: "O e-mail ou matrícula informado já está em uso.",
+      });
+    }
     console.error("Erro ao editar usuário:", error);
     res.status(500).json({ message: "Ocorreu um erro ao editar o usuário." });
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, isAdmin, async (req, res) => {
   const { id } = req.params;
 
   try {

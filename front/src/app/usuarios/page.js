@@ -15,6 +15,10 @@ import {
   CircularProgress,
   Modal,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import {
@@ -90,7 +94,17 @@ export default function UsuariosPage() {
 
   const handleOpenEditModal = (usuario) => {
     setUsuarioSelecionado(usuario);
-    setDadosEdicao({ nome: usuario.nome, email: usuario.email });
+    setDadosEdicao({
+      nome: usuario.nome || "",
+      email: usuario.email || "",
+      matricula: usuario.dadosAluno?.matricula || "",
+      curso: usuario.dadosAluno?.curso || "",
+      especializacao: usuario.dadosProfessor?.especializacao || "",
+      disponibilidade:
+        usuario.dadosProfessor?.disponibilidade !== undefined
+          ? String(Number(usuario.dadosProfessor.disponibilidade))
+          : "",
+    });
     setEditModalOpen(true);
   };
 
@@ -111,7 +125,8 @@ export default function UsuariosPage() {
   };
 
   const handleInputChange = (e, setData) => {
-    setData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmitModal = async (e) => {
@@ -342,6 +357,55 @@ export default function UsuariosPage() {
             required
             fullWidth
           />
+
+          {/* Campos para Aluno */}
+          {usuarioSelecionado?.dadosAluno && (
+            <>
+              <TextField
+                name="matricula"
+                label="Matrícula"
+                value={dadosEdicao.matricula || ""}
+                onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                fullWidth
+              />
+              <TextField
+                name="curso"
+                label="Curso"
+                value={dadosEdicao.curso || ""}
+                onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                fullWidth
+              />
+            </>
+          )}
+
+          {/* Campos para Professor */}
+          {usuarioSelecionado?.dadosProfessor && (
+            <>
+              <TextField
+                name="especializacao"
+                label="Especialização"
+                value={dadosEdicao.especializacao || ""}
+                onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                fullWidth
+              />
+              <FormControl fullWidth>
+                <InputLabel id="disponibilidade-label">
+                  Disponibilidade
+                </InputLabel>
+                <Select
+                  labelId="disponibilidade-label"
+                  name="disponibilidade"
+                  value={dadosEdicao.disponibilidade}
+                  label="Disponibilidade"
+                  onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                >
+                  <MenuItem value={"1"}>Disponível</MenuItem>
+                  <MenuItem value={"0"}>Indisponível</MenuItem>
+                </Select>
+              </FormControl>
+            </>
+          )}
+
           <Button type="submit" variant="contained">
             Salvar Alterações
           </Button>
