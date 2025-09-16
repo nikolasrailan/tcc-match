@@ -17,6 +17,7 @@ import {
   Divider,
   Alert,
 } from "@mui/material";
+import { Button } from "@/components/ui/button";
 
 export default function AlunoPage() {
   useAuthRedirect();
@@ -91,6 +92,9 @@ export default function AlunoPage() {
 
   return (
     <Box sx={{ p: 3, maxWidth: "900px", margin: "auto" }}>
+      <div>
+        <Button>Click me</Button>
+      </div>
       <Typography variant="h4" gutterBottom>
         Minhas Ideias de TCC
       </Typography>
