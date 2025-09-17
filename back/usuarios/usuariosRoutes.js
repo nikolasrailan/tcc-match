@@ -76,7 +76,7 @@ router.post(
   }
 );
 
-router.patch("/:id/role", authenticateToken, isAdmin, async (req, res) => {
+router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
   const { id } = req.params;
   const { role } = req.body;
 

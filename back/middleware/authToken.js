@@ -22,24 +22,26 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-const isAdmin = async (req, res, next) => {
+const isAdminOrSelf = async (req, res, next) => {
   try {
     const usuario = await Usuario.findByPk(req.user.id);
+    const isSelf = req.user.id.toString() === req.params.id;
 
-    if (usuario && usuario.isAdmin === 1) {
+    if ((usuario && usuario.isAdmin) || isSelf) {
       next();
     } else {
       res.status(403).json({
-        message: "Acesso proibido. Requer acesso de administrador.",
+        message:
+          "Acesso proibido. Requer acesso de administrador ou ser o próprio usuário.",
       });
     }
   } catch (error) {
-    console.error("Erro ao verificar permissão de admin:", error);
+    console.error("Erro ao verificar permissão de admin/self:", error);
     res.status(500).json({ message: "Erro interno do servidor." });
   }
 };
 
 module.exports = {
   authenticateToken,
-  isAdmin,
+  isAdmin: isAdminOrSelf, // Exportando como 'isAdmin' para não ter que mudar em todos os lugares
 };
