@@ -85,6 +85,16 @@ export default function Navbar() {
               </Link>
             </NavigationMenuItem>
           )}
+
+          {user?.dadosAluno && (
+            <NavigationMenuItem>
+              <Link href="/professores" legacyBehavior passHref>
+                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                  Professores Disponíveis
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+          )}
         </NavigationMenuList>
       </NavigationMenu>
 

@@ -100,3 +100,5 @@ export const deletarIdeiaTcc = (id) =>
   fetchApi(`/ideias-tcc/${id}`, {
     method: "DELETE",
   });
+
+export const getProfessores = () => fetchApi("/professores/public-list");

@@ -27,7 +27,10 @@ router.delete(
   professorController.deletarProfessor
 );
 
-// A rota de atualização foi centralizada em /usuarios/:id e esta pode ser removida
-// router.patch("/:id", authenticateToken, professorController.atualizarProfessor);
+router.get(
+  "/public-list",
+  authenticateToken,
+  professorController.listarProfessoresPublic
+);
 
 module.exports = router;

@@ -117,6 +117,27 @@ const professorController = {
       res.status(500).json({ message: "Erro ao deletar perfil de professor." });
     }
   },
+  async listarProfessoresPublic(req, res) {
+    try {
+      const professores = await Professor.findAll({
+        include: {
+          model: Usuario,
+          as: "usuario",
+          attributes: ["nome", "email"],
+        },
+        order: [
+          ["disponibilidade", "DESC"],
+          [{ model: Usuario, as: "usuario" }, "nome", "ASC"],
+        ],
+      });
+      return res.status(200).json(professores);
+    } catch (error) {
+      console.error("Erro ao listar professores:", error);
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao processar a requisição." });
+    }
+  },
 };
 
 module.exports = professorController;
