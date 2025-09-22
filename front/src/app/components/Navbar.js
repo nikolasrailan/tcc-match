@@ -82,22 +82,36 @@ export default function Navbar() {
             Professores Disponíveis
           </Link>
         )}
+        {!!user?.dadosAluno && (
+          <Link
+            href="/solicitar-orientacao"
+            className={cn(navigationMenuTriggerStyle())}
+          >
+            Solicitar Orientação
+          </Link>
+        )}
       </nav>
 
       {user ? (
         <DropdownMenu>
-          <DropdownMenuTrigger>{getInitials(user.nome)}</DropdownMenuTrigger>
-          <DropdownMenuContent>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>{getInitials(user.nome)}</AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
             <DropdownMenuLabel>{user.nome}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link href="/perfil">Ver Perfil</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <Link href="/login"></Link>
+        <Button asChild>
+          <Link href="/login">Login</Link>
+        </Button>
       )}
     </header>
   );

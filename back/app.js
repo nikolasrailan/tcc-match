@@ -21,12 +21,14 @@ const loginRoutes = require("./auth/loginRoutes");
 const professorRoutes = require("./professores/professorRoutes");
 const alunoRoutes = require("./alunos/alunoRoutes");
 const ideiaTccRoutes = require("./ideiaTcc/ideiaTccRoutes");
+const solicitacaoRoutes = require("./solicitacaoOrientacao/solicitacaoRoutes");
 
 app.use("/usuarios", usuariosRoutes);
 app.use("/login", loginRoutes);
 app.use("/professores", professorRoutes);
 app.use("/alunos", alunoRoutes);
 app.use("/ideias-tcc", ideiaTccRoutes);
+app.use("/solicitacoes", solicitacaoRoutes);
 
 const port = 8000;
 app.listen(port, () => {

@@ -102,3 +102,9 @@ export const deletarIdeiaTcc = (id) =>
   });
 
 export const getProfessores = () => fetchApi("/professores/public-list");
+
+export const enviarSolicitacao = (dados) =>
+  fetchApi("/solicitacoes", {
+    method: "POST",
+    body: JSON.stringify(dados),
+  });
