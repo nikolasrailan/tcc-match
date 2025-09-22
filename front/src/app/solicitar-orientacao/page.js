@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import {
-  getProfessoresDisponiveis,
-  getMinhasIdeias,
+  getProfessores,
+  getMinhaIdeiaTcc,
   enviarSolicitacao,
 } from "@/api/apiService";
 import { Button } from "@/components/ui/button";
@@ -39,8 +39,8 @@ export default function SolicitarOrientacaoPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [profData, ideiasData] = await Promise.all([
-      getProfessoresDisponiveis(),
-      getMinhasIdeias(),
+      getProfessores(),
+      getMinhaIdeiaTcc(),
     ]);
 
     if (profData) {
