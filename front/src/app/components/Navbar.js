@@ -5,13 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,6 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -27,11 +23,21 @@ export default function Navbar() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      setUser(null);
+    // Check if window is defined (ensures this runs only on the client-side)
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error("Failed to parse user from localStorage", e);
+          setUser(null);
+          // consider clearing the invalid item from localStorage
+          // localStorage.removeItem("user");
+        }
+      } else {
+        setUser(null);
+      }
     }
   }, [pathname]);
 
@@ -49,62 +55,38 @@ export default function Navbar() {
       <Link href="/" className="text-xl font-bold">
         TCC Match
       </Link>
-      <NavigationMenu>
-        <NavigationMenuList>
-          <NavigationMenuItem>
-            <Link href="/" legacyBehavior passHref>
-              <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                Home
-              </NavigationMenuLink>
-            </Link>
-          </NavigationMenuItem>
-          {user?.dadosAluno && (
-            <NavigationMenuItem>
-              <Link href="/aluno" legacyBehavior passHref>
-                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                  Minhas Ideias
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-          )}
-          {user?.dadosProfessor && (
-            <NavigationMenuItem>
-              <Link href="/professor" legacyBehavior passHref>
-                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                  Painel Professor
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-          )}
-          {user?.isAdmin && (
-            <NavigationMenuItem>
-              <Link href="/usuarios" legacyBehavior passHref>
-                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                  Admin
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-          )}
-
-          {user?.dadosAluno && (
-            <NavigationMenuItem>
-              <Link href="/professores" legacyBehavior passHref>
-                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                  Professores Disponíveis
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-          )}
-        </NavigationMenuList>
-      </NavigationMenu>
+      <nav className="flex items-center gap-2">
+        <Link href="/" className={cn(navigationMenuTriggerStyle())}>
+          Home
+        </Link>
+        {!!user?.dadosAluno && (
+          <Link href="/aluno" className={cn(navigationMenuTriggerStyle())}>
+            Minhas Ideias
+          </Link>
+        )}
+        {!!user?.dadosProfessor && (
+          <Link href="/professor" className={cn(navigationMenuTriggerStyle())}>
+            Painel Professor
+          </Link>
+        )}
+        {!!user?.isAdmin && (
+          <Link href="/usuarios" className={cn(navigationMenuTriggerStyle())}>
+            Admin
+          </Link>
+        )}
+        {!!user?.dadosAluno && (
+          <Link
+            href="/professores"
+            className={cn(navigationMenuTriggerStyle())}
+          >
+            Professores Disponíveis
+          </Link>
+        )}
+      </nav>
 
       {user ? (
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <Avatar>
-              <AvatarFallback>{getInitials(user.nome)}</AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger>{getInitials(user.nome)}</DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuLabel>{user.nome}</DropdownMenuLabel>
             <DropdownMenuSeparator />
