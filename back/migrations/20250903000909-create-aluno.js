@@ -14,10 +14,6 @@ module.exports = {
         allowNull: false,
         unique: true,
       },
-      curso: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
       id_usuario: {
         type: Sequelize.INTEGER,
         allowNull: false,
@@ -35,6 +31,14 @@ module.exports = {
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
+      },
+      id_curso: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: "cursos",
+          key: "id_curso",
+        },
       },
     });
   },
