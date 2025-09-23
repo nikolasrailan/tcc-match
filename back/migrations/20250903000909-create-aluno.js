@@ -12,7 +12,7 @@ module.exports = {
       matricula: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true, // Matrícula deve ser única
+        unique: true,
       },
       curso: {
         type: Sequelize.STRING,
