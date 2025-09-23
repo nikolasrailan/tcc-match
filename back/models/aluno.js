@@ -3,12 +3,11 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Aluno extends Model {
     static associate(models) {
-      this.belongsTo(models.Usuario, {
+      Aluno.belongsTo(models.Usuario, {
         foreignKey: "id_usuario",
         as: "dadosUsuario",
       });
-      // Adiciona a associação com a tabela de Cursos
-      this.belongsTo(models.Curso, {
+      Aluno.belongsTo(models.Curso, {
         foreignKey: "id_curso",
         as: "cursoInfo",
       });
@@ -20,15 +19,37 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
+        allowNull: false,
       },
-      matricula: DataTypes.STRING,
-      id_usuario: DataTypes.INTEGER,
-      id_curso: DataTypes.INTEGER, // Chave estrangeira para Curso
+      matricula: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+
+      id_usuario: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        unique: true,
+        references: {
+          model: "Usuarios",
+          key: "id_usuario",
+        },
+      },
+      id_curso: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+          model: "Cursos",
+          key: "id_curso",
+        },
+      },
     },
     {
       sequelize,
       modelName: "Aluno",
       tableName: "alunos",
+      paranoid: true, // Habilita soft-delete
     }
   );
   return Aluno;

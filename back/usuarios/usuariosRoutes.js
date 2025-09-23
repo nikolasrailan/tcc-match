@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
-const { Usuario, Professor, Aluno, sequelize } = require("../models");
+const { Usuario, Professor, Aluno, Curso, sequelize } = require("../models");
 const bcrypt = require("bcryptjs");
 const { authenticateToken, isAdmin } = require("../middleware/authToken");
 
@@ -17,7 +17,13 @@ router.get("/", authenticateToken, isAdmin, async (req, res) => {
         {
           model: Aluno,
           as: "dadosAluno",
-          attributes: ["id_aluno", "matricula", "curso"],
+          // O retorno do cursoInfo com o nome do curso para o front-end
+          include: {
+            model: Curso,
+            as: "cursoInfo",
+            attributes: ["id_curso", "nome"],
+          },
+          attributes: ["id_aluno", "matricula"],
         },
       ],
       attributes: { exclude: ["senha"] },
@@ -86,7 +92,7 @@ router.patch("/:id", authenticateToken, async (req, res) => {
       senha,
       isAdmin: newIsAdmin,
       matricula,
-      curso,
+      id_curso,
       especializacao,
       disponibilidade,
     } = req.body;
@@ -132,7 +138,7 @@ router.patch("/:id", authenticateToken, async (req, res) => {
       const dadosAlunoParaAtualizar = {};
       if (matricula !== undefined)
         dadosAlunoParaAtualizar.matricula = matricula;
-      if (curso !== undefined) dadosAlunoParaAtualizar.curso = curso;
+      if (id_curso !== undefined) dadosAlunoParaAtualizar.id_curso = id_curso;
       if (Object.keys(dadosAlunoParaAtualizar).length > 0) {
         await usuario.dadosAluno.update(dadosAlunoParaAtualizar, {
           transaction: t,
@@ -158,7 +164,10 @@ router.patch("/:id", authenticateToken, async (req, res) => {
 
     // Retorna o usuário atualizado para o frontend
     const usuarioAtualizado = await Usuario.findByPk(id, {
-      include: ["dadosAluno", "dadosProfessor"],
+      include: [
+        { model: Aluno, as: "dadosAluno", include: ["cursoInfo"] },
+        { model: Professor, as: "dadosProfessor" },
+      ],
       attributes: { exclude: ["senha"] },
     });
 
