@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
-const { Usuario, Aluno, Professor } = require("../models");
+const { Usuario, Aluno, Professor, Curso } = require("../models"); // Importa o modelo Curso
 const bcrypt = require("bcryptjs");
 
 router.post("/", async (req, res) => {
@@ -11,7 +11,15 @@ router.post("/", async (req, res) => {
     const usuario = await Usuario.findOne({
       where: { email },
       include: [
-        { model: Aluno, as: "dadosAluno" },
+        {
+          model: Aluno,
+          as: "dadosAluno",
+          include: {
+            model: Curso,
+            as: "cursoInfo",
+            attributes: ["id_curso", "nome"],
+          },
+        },
         { model: Professor, as: "dadosProfessor" },
       ],
     });
