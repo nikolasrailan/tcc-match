@@ -1,129 +1,183 @@
-const { Aluno, Usuario, Professor } = require("../models");
+"use client";
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { getCursos, criarCurso, deletarCurso } from "@/api/apiService";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Typography,
+  Button,
+  Box,
+  CircularProgress,
+  Modal,
+  TextField,
+  Alert,
+} from "@mui/material";
 
-const alunoController = {
-  async criarAluno(req, res) {
-    try {
-      const { matricula, id_curso, id_usuario } = req.body;
-
-      if (!matricula || !id_curso || !id_usuario) {
-        return res.status(400).json({
-          error:
-            "Todos os campos são obrigatórios: matrícula, id_curso e id_usuario.",
-        });
-      }
-
-      const usuario = await Usuario.findByPk(id_usuario);
-      if (!usuario) {
-        return res
-          .status(404)
-          .json({ error: "Usuário não encontrado com o ID fornecido." });
-      }
-
-      const alunoExistente = await Aluno.findOne({ where: { id_usuario } });
-      const professorExistente = await Professor.findOne({
-        where: { id_usuario },
-      });
-
-      if (alunoExistente || professorExistente) {
-        return res.status(409).json({
-          error: "Este usuário já possui um perfil de aluno ou professor.",
-        });
-      }
-
-      const novoAluno = await Aluno.create({
-        matricula,
-        id_curso,
-        id_usuario,
-      });
-
-      return res.status(201).json(novoAluno);
-    } catch (error) {
-      console.error("Erro ao criar aluno:", error);
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro ao processar a requisição." });
-    }
-  },
-
-  async listarAlunos(req, res) {
-    try {
-      const alunos = await Aluno.findAll({
-        include: {
-          model: Usuario,
-          as: "dadosUsuario",
-          attributes: ["id_usuario", "nome", "email"],
-        },
-      });
-      return res.status(200).json(alunos);
-    } catch (error) {
-      console.error("Erro ao listar alunos:", error);
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro ao processar a requisição." });
-    }
-  },
-
-  async atualizarAluno(req, res) {
-    const { id } = req.params;
-    const { matricula, id_curso } = req.body;
-    const userId = req.user.id;
-    const isAdmin = req.user.role === "admin";
-
-    try {
-      const aluno = await Aluno.findByPk(id);
-
-      if (!aluno) {
-        return res
-          .status(404)
-          .json({ error: "Perfil de aluno não encontrado." });
-      }
-
-      if (aluno.id_usuario !== userId && !isAdmin) {
-        return res.status(403).json({
-          error: "Permissão negada. Você só pode editar seu próprio perfil.",
-        });
-      }
-
-      aluno.matricula = matricula ?? aluno.matricula;
-      aluno.id_curso = id_curso ?? aluno.id_curso;
-
-      await aluno.save();
-
-      return res.status(200).json(aluno);
-    } catch (error) {
-      console.error("Erro ao atualizar aluno:", error);
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro ao atualizar o perfil do aluno." });
-    }
-  },
-
-  async deletarAluno(req, res) {
-    const { id } = req.params;
-
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Acesso negado." });
-    }
-
-    try {
-      const numLinhasAfetadas = await Aluno.destroy({
-        where: { id_aluno: id },
-      });
-
-      if (numLinhasAfetadas === 0) {
-        return res
-          .status(404)
-          .json({ message: "Perfil de aluno não encontrado." });
-      }
-
-      res
-        .status(200)
-        .json({ message: "Perfil de aluno deletado com sucesso!" });
-    } catch (error) {
-      console.error("Erro ao deletar aluno:", error);
-      res.status(500).json({ message: "Erro ao deletar perfil de aluno." });
-    }
-  },
+// Estilo para o Modal
+const styleModal = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 400,
+  bgcolor: "background.paper",
+  border: "2px solid #000",
+  boxShadow: 24,
+  p: 4,
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
 };
 
-module.exports = alunoController;
+export default function CursosPage() {
+  useAuthRedirect();
+  const [cursos, setCursos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [novoCursoNome, setNovoCursoNome] = useState("");
+  const [error, setError] = useState("");
+
+  const fetchCursos = useCallback(async () => {
+    setLoading(true);
+    const data = await getCursos();
+    if (data) {
+      setCursos(data);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchCursos();
+  }, [fetchCursos]);
+
+  const handleOpenModal = () => {
+    setModalOpen(true);
+    setNovoCursoNome("");
+    setError("");
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+  };
+
+  const handleCreateCurso = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    if (!novoCursoNome.trim()) {
+      setError("O nome do curso não pode ser vazio.");
+      setLoading(false);
+      return;
+    }
+
+    const result = await criarCurso({ nome: novoCursoNome });
+    if (result) {
+      alert("Curso criado com sucesso!");
+      handleCloseModal();
+      fetchCursos();
+    } else {
+      setError("Erro ao criar curso. O nome pode já existir.");
+    }
+    setLoading(false);
+  };
+
+  const handleDeleteCurso = async (cursoId) => {
+    const confirmed = window.confirm(
+      "Tem certeza que deseja deletar este curso? Esta ação não pode ser desfeita e removerá alunos associados."
+    );
+    if (confirmed) {
+      const result = await deletarCurso(cursoId);
+      if (result) {
+        alert("Curso deletado com sucesso!");
+        fetchCursos();
+      } else {
+        alert("Erro ao deletar curso.");
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        p: 3,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <Typography variant="h4" gutterBottom>
+        Gerenciar Cursos
+      </Typography>
+      <Button variant="contained" onClick={handleOpenModal} sx={{ mb: 3 }}>
+        Adicionar Novo Curso
+      </Button>
+
+      <TableContainer
+        component={Paper}
+        sx={{ maxWidth: "80%", margin: "auto" }}
+      >
+        <Table sx={{ minWidth: 650 }} aria-label="tabela de cursos">
+          <TableHead>
+            <TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>Nome do Curso</TableCell>
+              <TableCell align="center">Ações</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {cursos.map((curso) => (
+              <TableRow key={curso.id_curso}>
+                <TableCell>{curso.id_curso}</TableCell>
+                <TableCell>{curso.nome}</TableCell>
+                <TableCell align="center">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="error"
+                    onClick={() => handleDeleteCurso(curso.id_curso)}
+                  >
+                    Excluir
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Modal para criar curso */}
+      <Modal open={modalOpen} onClose={handleCloseModal}>
+        <Box sx={styleModal} component="form" onSubmit={handleCreateCurso}>
+          <Typography variant="h6">Criar Novo Curso</Typography>
+          {error && <Alert severity="error">{error}</Alert>}
+          <TextField
+            name="nome"
+            label="Nome do Curso"
+            onChange={(e) => setNovoCursoNome(e.target.value)}
+            value={novoCursoNome}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? "Criando..." : "Confirmar"}
+          </Button>
+        </Box>
+      </Modal>
+    </Box>
+  );
+}

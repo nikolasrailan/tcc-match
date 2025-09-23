@@ -42,7 +42,7 @@ export default function PerfilPage() {
             nome: parsedUser.nome || "",
             email: parsedUser.email || "",
             matricula: parsedUser.dadosAluno?.matricula || "",
-            curso: parsedUser.dadosAluno?.curso || "",
+            curso: parsedUser.dadosAluno?.cursoInfo?.nome || "",
             especializacao: parsedUser.dadosProfessor?.especializacao || "",
             disponibilidade: parsedUser.dadosProfessor?.disponibilidade
               ? "disponivel"
@@ -156,6 +156,7 @@ export default function PerfilPage() {
                   <Input
                     id="curso"
                     name="curso"
+                    disabled
                     value={formData.curso || ""}
                     onChange={handleChange}
                   />
