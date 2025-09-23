@@ -1,4 +1,3 @@
-// front/src/app/perfil/page.js
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -32,20 +31,27 @@ export default function PerfilPage() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setFormData({
-        nome: parsedUser.nome || "",
-        email: parsedUser.email || "",
-        matricula: parsedUser.dadosAluno?.matricula || "",
-        curso: parsedUser.dadosAluno?.curso || "",
-        especializacao: parsedUser.dadosProfessor?.especializacao || "",
-        disponibilidade: parsedUser.dadosProfessor?.disponibilidade
-          ? "disponivel"
-          : "indisponivel",
-      });
+    // A pagina só deve carregar se o user estiver no localStorage.
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          setFormData({
+            nome: parsedUser.nome || "",
+            email: parsedUser.email || "",
+            matricula: parsedUser.dadosAluno?.matricula || "",
+            curso: parsedUser.dadosAluno?.curso || "",
+            especializacao: parsedUser.dadosProfessor?.especializacao || "",
+            disponibilidade: parsedUser.dadosProfessor?.disponibilidade
+              ? "disponivel"
+              : "indisponivel",
+          });
+        } catch (e) {
+          console.error("Falha ao analisar o usuário do localStorage", e);
+        }
+      }
     }
   }, []);
 
@@ -83,15 +89,19 @@ export default function PerfilPage() {
       }),
     };
 
+    // Ajusta o formato da disponibilidade para o backend
+    if (user.dadosProfessor) {
+      dataToUpdate.disponibilidade = dataToUpdate.disponibilidade ? 1 : 0;
+    }
+
     const result = await updateUsuario(user.id_usuario, dataToUpdate);
     setLoading(false);
 
-    if (result) {
+    if (result && result.user) {
       setSuccess("Perfil atualizado com sucesso!");
-      // Atualizar o localStorage com os novos dados
-      const updatedUser = { ...user, ...dataToUpdate };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      // Atualizar o localStorage com os novos dados recebidos do backend
+      localStorage.setItem("user", JSON.stringify(result.user));
+      setUser(result.user);
     } else {
       setError("Ocorreu um erro ao atualizar o perfil.");
     }
@@ -115,7 +125,7 @@ export default function PerfilPage() {
               <Input
                 id="nome"
                 name="nome"
-                value={formData.nome}
+                value={formData.nome || ""}
                 onChange={handleChange}
               />
             </div>
@@ -125,7 +135,7 @@ export default function PerfilPage() {
                 id="email"
                 name="email"
                 type="email"
-                value={formData.email}
+                value={formData.email || ""}
                 onChange={handleChange}
               />
             </div>
@@ -137,7 +147,7 @@ export default function PerfilPage() {
                   <Input
                     id="matricula"
                     name="matricula"
-                    value={formData.matricula}
+                    value={formData.matricula || ""}
                     onChange={handleChange}
                   />
                 </div>
@@ -146,7 +156,7 @@ export default function PerfilPage() {
                   <Input
                     id="curso"
                     name="curso"
-                    value={formData.curso}
+                    value={formData.curso || ""}
                     onChange={handleChange}
                   />
                 </div>
@@ -160,7 +170,7 @@ export default function PerfilPage() {
                   <Input
                     id="especializacao"
                     name="especializacao"
-                    value={formData.especializacao}
+                    value={formData.especializacao || ""}
                     onChange={handleChange}
                   />
                 </div>

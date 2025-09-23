@@ -16,22 +16,24 @@ async function fetchApi(endpoint, options = {}) {
       headers,
     });
 
+    const contentType = response.headers.get("content-type");
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData = {};
+      if (contentType && contentType.includes("application/json")) {
+        errorData = await response.json();
+      }
       throw new Error(
-        errorData.message || errorData.error || "Erro na requisição"
+        errorData.message || response.statusText || "Erro na requisição"
       );
     }
 
-    // Retorna a resposta JSON se houver corpo, senão retorna sucesso
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") !== -1) {
+    if (contentType && contentType.includes("application/json")) {
       return await response.json();
     }
     return { success: true };
   } catch (error) {
     console.error(`Erro na chamada da API para ${endpoint}:`, error);
-    alert(error.message);
+
     return null;
   }
 }
@@ -57,21 +59,9 @@ export const criarPerfil = (tipo, dados) =>
     body: JSON.stringify(dados),
   });
 
-export const updateAluno = (id, data) =>
-  fetchApi(`/alunos/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-
 export const deleteAlunoProfile = (id) =>
   fetchApi(`/alunos/${id}`, {
     method: "DELETE",
-  });
-
-export const updateProfessor = (id, data) =>
-  fetchApi(`/professores/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
   });
 
 export const deleteProfessorProfile = (id) =>

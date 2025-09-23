@@ -64,7 +64,6 @@ router.post(
         isAdmin,
       });
 
-      // Remove a senha do objeto de resposta
       const usuarioSemSenha = novoUsuario.toJSON();
       delete usuarioSemSenha.senha;
 
@@ -76,28 +75,8 @@ router.post(
   }
 );
 
-router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { role } = req.body;
-
-  try {
-    const [numLinhasAfetadas] = await Usuario.update(
-      { isAdmin: role === "admin" ? 1 : 0 },
-      { where: { id_usuario: id } }
-    );
-
-    if (numLinhasAfetadas === 0) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
-    }
-
-    res.status(200).json({ message: "Papel atualizado com sucesso!" });
-  } catch (error) {
-    console.error("Erro ao atualizar papel do usuário:", error);
-    res.status(500).json({ message: "Erro ao atualizar papel do usuário" });
-  }
-});
-
-router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
+// Rota de atualização consolidada para lidar com todos os tipos de perfil
+router.patch("/:id", authenticateToken, async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
@@ -105,12 +84,22 @@ router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
       nome,
       email,
       senha,
-      isAdmin,
+      isAdmin: newIsAdmin,
       matricula,
       curso,
       especializacao,
       disponibilidade,
     } = req.body;
+
+    const isSelf = req.user.id.toString() === id.toString();
+    const isUserAdmin = req.user.role === "admin";
+    if (!isSelf && !isUserAdmin) {
+      await t.rollback();
+      return res.status(403).json({
+        message:
+          "Acesso proibido. Você não tem permissão para editar este usuário.",
+      });
+    }
 
     const usuario = await Usuario.findByPk(id, {
       include: ["dadosAluno", "dadosProfessor"],
@@ -126,7 +115,10 @@ router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
     const dadosUsuarioParaAtualizar = {};
     if (nome !== undefined) dadosUsuarioParaAtualizar.nome = nome;
     if (email !== undefined) dadosUsuarioParaAtualizar.email = email;
-    if (isAdmin !== undefined) dadosUsuarioParaAtualizar.isAdmin = isAdmin;
+    // Permite que apenas admins mudem o isAdmin
+    if (isUserAdmin && newIsAdmin !== undefined) {
+      dadosUsuarioParaAtualizar.isAdmin = newIsAdmin;
+    }
     if (senha) {
       dadosUsuarioParaAtualizar.senha = await bcrypt.hash(senha, 10);
     }
@@ -163,7 +155,17 @@ router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
     }
 
     await t.commit();
-    res.status(200).json({ message: "Usuário atualizado com sucesso!" });
+
+    // Retorna o usuário atualizado para o frontend
+    const usuarioAtualizado = await Usuario.findByPk(id, {
+      include: ["dadosAluno", "dadosProfessor"],
+      attributes: { exclude: ["senha"] },
+    });
+
+    res.status(200).json({
+      message: "Usuário atualizado com sucesso!",
+      user: usuarioAtualizado,
+    });
   } catch (error) {
     await t.rollback();
     if (error.name === "SequelizeUniqueConstraintError") {
