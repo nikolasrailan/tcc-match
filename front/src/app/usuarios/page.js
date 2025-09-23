@@ -19,6 +19,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Alert,
 } from "@mui/material";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import {
@@ -28,7 +29,9 @@ import {
   updateUsuario,
   deleteAlunoProfile,
   deleteProfessorProfile,
+  getCursos, // Importa o novo serviço de API para cursos
 } from "@/api/apiService";
+import Link from "next/link";
 
 // Estilo para o Modal
 const styleModal = {
@@ -49,6 +52,7 @@ const styleModal = {
 export default function UsuariosPage() {
   useAuthRedirect(); // Protege a rota
   const [usuarios, setUsuarios] = useState([]);
+  const [cursos, setCursos] = useState([]); // Novo estado para os cursos
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -57,6 +61,8 @@ export default function UsuariosPage() {
   const [tipoPerfil, setTipoPerfil] = useState(""); // 'aluno' ou 'professor'
   const [dadosPerfil, setDadosPerfil] = useState({});
   const [dadosEdicao, setDadosEdicao] = useState({});
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   const fetchUsuarios = useCallback(async () => {
     setLoading(true);
@@ -67,16 +73,24 @@ export default function UsuariosPage() {
     setLoading(false);
   }, []);
 
+  const fetchCursos = useCallback(async () => {
+    const data = await getCursos();
+    if (data) {
+      setCursos(data);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUsuarios();
-  }, [fetchUsuarios]);
+    fetchCursos();
+  }, [fetchUsuarios, fetchCursos]);
 
   const handleOpenModal = (usuario, tipo) => {
     setUsuarioSelecionado(usuario);
     setTipoPerfil(tipo);
     setDadosPerfil(
       tipo === "aluno"
-        ? { matricula: "", curso: "", id_usuario: usuario.id_usuario }
+        ? { matricula: "", id_curso: "", id_usuario: usuario.id_usuario }
         : {
             disponibilidade: 1,
             especializacao: "",
@@ -98,7 +112,8 @@ export default function UsuariosPage() {
       nome: usuario.nome || "",
       email: usuario.email || "",
       matricula: usuario.dadosAluno?.matricula || "",
-      curso: usuario.dadosAluno?.curso || "",
+      // Agora armazena o ID do curso, não o nome
+      id_curso: usuario.dadosAluno?.cursoInfo?.id_curso || "",
       especializacao: usuario.dadosProfessor?.especializacao || "",
       disponibilidade:
         usuario.dadosProfessor?.disponibilidade !== undefined
@@ -131,29 +146,59 @@ export default function UsuariosPage() {
 
   const handleSubmitModal = async (e) => {
     e.preventDefault();
-    const sucesso = await criarPerfil(tipoPerfil, dadosPerfil);
-    if (sucesso) {
-      alert(
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    const dadosParaEnvio =
+      tipoPerfil === "aluno"
+        ? {
+            ...dadosPerfil,
+            id_curso: parseInt(dadosPerfil.id_curso),
+          }
+        : dadosPerfil;
+
+    const result = await criarPerfil(tipoPerfil, dadosParaEnvio);
+
+    setLoading(false);
+    if (result) {
+      setSuccess(
         `${
           tipoPerfil.charAt(0).toUpperCase() + tipoPerfil.slice(1)
         } criado com sucesso!`
       );
       handleCloseModal();
-      fetchUsuarios(); // Atualiza a lista de usuários
+      fetchUsuarios();
+    } else {
+      setError(`Erro ao criar perfil de ${tipoPerfil}.`);
     }
   };
 
   const handleSubmitEditModal = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
     if (!usuarioSelecionado) return;
-    const sucesso = await updateUsuario(
+
+    // Converte disponibilidade para o formato booleano
+    const dadosParaEnvio = {
+      ...dadosEdicao,
+      disponibilidade: dadosEdicao.disponibilidade === "1",
+    };
+
+    const result = await updateUsuario(
       usuarioSelecionado.id_usuario,
-      dadosEdicao
+      dadosParaEnvio
     );
-    if (sucesso) {
-      alert("Usuário atualizado com sucesso!");
+    setLoading(false);
+
+    if (result) {
+      setSuccess("Usuário atualizado com sucesso!");
       handleCloseEditModal();
       fetchUsuarios();
+    } else {
+      setError("Ocorreu um erro ao atualizar o usuário.");
     }
   };
 
@@ -211,6 +256,24 @@ export default function UsuariosPage() {
       <Typography variant="h4" gutterBottom>
         Painel de Gerenciamento de Usuários
       </Typography>
+
+      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <Button variant="contained" component={Link} href="/cursos">
+          Gerenciar Cursos
+        </Button>
+      </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
+
       <TableContainer
         component={Paper}
         sx={{ maxWidth: "80%", margin: "auto" }}
@@ -311,13 +374,23 @@ export default function UsuariosPage() {
                 required
                 fullWidth
               />
-              <TextField
-                name="curso"
-                label="Curso"
-                onChange={(e) => handleInputChange(e, setDadosPerfil)}
-                required
-                fullWidth
-              />
+              {/* Dropdown para selecionar o curso */}
+              <FormControl fullWidth required>
+                <InputLabel id="curso-label">Curso</InputLabel>
+                <Select
+                  labelId="curso-label"
+                  name="id_curso"
+                  value={dadosPerfil.id_curso}
+                  label="Curso"
+                  onChange={(e) => handleInputChange(e, setDadosPerfil)}
+                >
+                  {cursos.map((curso) => (
+                    <MenuItem key={curso.id_curso} value={curso.id_curso}>
+                      {curso.nome}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </>
           ) : (
             <TextField
@@ -368,13 +441,23 @@ export default function UsuariosPage() {
                 onChange={(e) => handleInputChange(e, setDadosEdicao)}
                 fullWidth
               />
-              <TextField
-                name="curso"
-                label="Curso"
-                value={dadosEdicao.curso || ""}
-                onChange={(e) => handleInputChange(e, setDadosEdicao)}
-                fullWidth
-              />
+              {/* Dropdown para selecionar o curso */}
+              <FormControl fullWidth required>
+                <InputLabel id="curso-label">Curso</InputLabel>
+                <Select
+                  labelId="curso-label"
+                  name="id_curso"
+                  value={dadosEdicao.id_curso || ""}
+                  label="Curso"
+                  onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                >
+                  {cursos.map((curso) => (
+                    <MenuItem key={curso.id_curso} value={curso.id_curso}>
+                      {curso.nome}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </>
           )}
 

@@ -5,7 +5,12 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       this.belongsTo(models.Usuario, {
         foreignKey: "id_usuario",
-        as: "dadosUsuario", // Apelido para a associação
+        as: "dadosUsuario",
+      });
+      // Adiciona a associação com a tabela de Cursos
+      this.belongsTo(models.Curso, {
+        foreignKey: "id_curso",
+        as: "cursoInfo",
       });
     }
   }
@@ -17,8 +22,8 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
       },
       matricula: DataTypes.STRING,
-      curso: DataTypes.STRING,
       id_usuario: DataTypes.INTEGER,
+      id_curso: DataTypes.INTEGER, // Chave estrangeira para Curso
     },
     {
       sequelize,

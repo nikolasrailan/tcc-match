@@ -33,7 +33,6 @@ async function fetchApi(endpoint, options = {}) {
     return { success: true };
   } catch (error) {
     console.error(`Erro na chamada da API para ${endpoint}:`, error);
-
     return null;
   }
 }
@@ -91,10 +90,25 @@ export const deletarIdeiaTcc = (id) =>
     method: "DELETE",
   });
 
+// --- Funções de Professores Públicos ---
 export const getProfessores = () => fetchApi("/professores/public-list");
 
 export const enviarSolicitacao = (dados) =>
   fetchApi("/solicitacoes", {
     method: "POST",
     body: JSON.stringify(dados),
+  });
+
+// --- NOVAS Funções de Cursos ---
+export const getCursos = () => fetchApi("/cursos");
+
+export const criarCurso = (dados) =>
+  fetchApi("/cursos", {
+    method: "POST",
+    body: JSON.stringify(dados),
+  });
+
+export const deletarCurso = (id) =>
+  fetchApi(`/cursos/${id}`, {
+    method: "DELETE",
   });
