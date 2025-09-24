@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-import { updateUsuario } from "@/api/apiService";
+import { updateUsuario, getCursos } from "@/api/apiService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,7 +31,7 @@ export default function PerfilPage() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    // A pagina só deve carregar se o user estiver no localStorage.
+    // A página só deve carregar se o usuário estiver no localStorage.
     if (typeof window !== "undefined") {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
@@ -42,6 +42,7 @@ export default function PerfilPage() {
             nome: parsedUser.nome || "",
             email: parsedUser.email || "",
             matricula: parsedUser.dadosAluno?.matricula || "",
+            // Agora, vamos pegar o nome do curso para exibição no input
             curso: parsedUser.dadosAluno?.cursoInfo?.nome || "",
             especializacao: parsedUser.dadosProfessor?.especializacao || "",
             disponibilidade: parsedUser.dadosProfessor?.disponibilidade
@@ -61,7 +62,9 @@ export default function PerfilPage() {
   };
 
   const handleSelectChange = (value) => {
-    setFormData((prev) => ({ ...prev, disponibilidade: value }));
+    if (user.dadosProfessor) {
+      setFormData((prev) => ({ ...prev, disponibilidade: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -81,7 +84,8 @@ export default function PerfilPage() {
       email: formData.email,
       ...(user.dadosAluno && {
         matricula: formData.matricula,
-        curso: formData.curso,
+        // Não envie o campo de curso na atualização, já que ele é somente leitura
+        // id_curso: formData.id_curso,
       }),
       ...(user.dadosProfessor && {
         especializacao: formData.especializacao,
@@ -89,7 +93,6 @@ export default function PerfilPage() {
       }),
     };
 
-    // Ajusta o formato da disponibilidade para o backend
     if (user.dadosProfessor) {
       dataToUpdate.disponibilidade = dataToUpdate.disponibilidade ? 1 : 0;
     }
@@ -99,9 +102,10 @@ export default function PerfilPage() {
 
     if (result && result.user) {
       setSuccess("Perfil atualizado com sucesso!");
-      // Atualizar o localStorage com os novos dados recebidos do backend
-      localStorage.setItem("user", JSON.stringify(result.user));
+      // Atualizar o estado do componente com os novos dados recebidos do backend
       setUser(result.user);
+      // Atualizar também o localStorage
+      localStorage.setItem("user", JSON.stringify(result.user));
     } else {
       setError("Ocorreu um erro ao atualizar o perfil.");
     }
@@ -156,9 +160,8 @@ export default function PerfilPage() {
                   <Input
                     id="curso"
                     name="curso"
-                    disabled
                     value={formData.curso || ""}
-                    onChange={handleChange}
+                    disabled // O campo de curso não é editável para o aluno
                   />
                 </div>
               </>
@@ -178,8 +181,9 @@ export default function PerfilPage() {
                 <div className="space-y-2">
                   <Label htmlFor="disponibilidade">Disponibilidade</Label>
                   <Select
+                    name="disponibilidade"
                     value={formData.disponibilidade}
-                    onValueChange={handleSelectChange}
+                    onValueChange={(value) => handleSelectChange(value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione..." />
