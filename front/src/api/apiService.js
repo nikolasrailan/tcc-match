@@ -104,6 +104,9 @@ export const enviarSolicitacao = (dados) =>
     body: JSON.stringify(dados),
   });
 
+export const getMinhasSolicitacoes = () =>
+  fetchApi("/solicitacoes/minhas-solicitacoes");
+
 // --- NOVAS Funções de Cursos ---
 export const getCursos = () => fetchApi("/cursos");
 

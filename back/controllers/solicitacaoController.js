@@ -1,4 +1,10 @@
-const { SolicitacaoOrientacao, Aluno, Usuario } = require("../models");
+const {
+  SolicitacaoOrientacao,
+  Aluno,
+  Usuario,
+  Professor,
+  IdeiaTcc,
+} = require("../models");
 
 const solicitacaoController = {
   async criarSolicitacao(req, res) {
@@ -43,7 +49,44 @@ const solicitacaoController = {
     }
   },
 
-  // Outros métodos como listar, aceitar, rejeitar podem ser adicionados aqui
+  async getMinhasSolicitacoes(req, res) {
+    try {
+      const idUsuario = req.user.id;
+      const aluno = await Aluno.findOne({ where: { id_usuario: idUsuario } });
+
+      if (!aluno) {
+        return res.status(403).json({ error: "Usuário não é um aluno." });
+      }
+
+      const solicitacoes = await SolicitacaoOrientacao.findAll({
+        where: { id_aluno: aluno.id_aluno },
+        include: [
+          {
+            model: Professor,
+            as: "professor",
+            include: {
+              model: Usuario,
+              as: "usuario",
+              attributes: ["nome"],
+            },
+          },
+          {
+            model: IdeiaTcc,
+            as: "ideiaTcc",
+            attributes: ["titulo"],
+          },
+        ],
+        order: [["data_solicitacao", "DESC"]],
+      });
+
+      res.status(200).json(solicitacoes);
+    } catch (error) {
+      console.error("Erro ao buscar solicitações:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao buscar as solicitações." });
+    }
+  },
 };
 
 module.exports = solicitacaoController;

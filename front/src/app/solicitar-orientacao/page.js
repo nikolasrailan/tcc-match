@@ -5,6 +5,7 @@ import {
   getProfessores,
   getMinhaIdeiaTcc,
   enviarSolicitacao,
+  getMinhasSolicitacoes,
 } from "@/api/apiService";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,13 +24,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 
 export default function SolicitarOrientacaoPage() {
   useAuthRedirect();
   const router = useRouter();
   const [professores, setProfessores] = useState([]);
   const [ideias, setIdeias] = useState([]);
+  const [solicitacoes, setSolicitacoes] = useState([]);
   const [selectedProfessor, setSelectedProfessor] = useState("");
   const [selectedIdeia, setSelectedIdeia] = useState("");
   const [loading, setLoading] = useState(true);
@@ -38,20 +50,23 @@ export default function SolicitarOrientacaoPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [profData, ideiasData] = await Promise.all([
-      getProfessores(true), // Apenas professores disponíveis
+    const [profData, ideiasData, solicitacoesData] = await Promise.all([
+      getProfessores(true),
       getMinhaIdeiaTcc(),
+      getMinhasSolicitacoes(),
     ]);
 
     if (profData) {
       setProfessores(profData);
     }
     if (ideiasData) {
-      // Filtrar ideias que ainda não foram submetidas ou estão pendentes
       const ideiasDisponiveis = ideiasData.filter(
         (ideia) => ideia.status === 0
       );
       setIdeias(ideiasDisponiveis);
+    }
+    if (solicitacoesData) {
+      setSolicitacoes(solicitacoesData);
     }
     setLoading(false);
   }, []);
@@ -80,21 +95,35 @@ export default function SolicitarOrientacaoPage() {
     setLoading(false);
     if (result) {
       setSuccess("Solicitação enviada com sucesso!");
-      setTimeout(() => router.push("/aluno"), 2000);
+      fetchData(); // Re-fetch data to update the table
+      setSelectedIdeia("");
+      setSelectedProfessor("");
     } else {
-      // A mensagem de erro específica já é mostrada pelo alert no apiService
       setError(
         "Não foi possível enviar a solicitação. Verifique se já não existe uma solicitação para esta ideia."
       );
     }
   };
 
-  if (loading && professores.length === 0 && ideias.length === 0) {
+  const getStatusText = (status) => {
+    switch (status) {
+      case 0:
+        return <Badge variant="secondary">Pendente</Badge>;
+      case 1:
+        return <Badge>Aceito</Badge>;
+      case 2:
+        return <Badge variant="destructive">Rejeitado</Badge>;
+      default:
+        return <Badge variant="outline">Desconhecido</Badge>;
+    }
+  };
+
+  if (loading && !solicitacoes.length) {
     return <div>Carregando...</div>;
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8 space-y-8">
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Solicitar Orientação</CardTitle>
@@ -161,6 +190,53 @@ export default function SolicitarOrientacaoPage() {
             </Button>
           </CardFooter>
         </form>
+      </Card>
+
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>Minhas Solicitações</CardTitle>
+          <CardDescription>
+            Acompanhe o status das suas solicitações de orientação.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Professor</TableHead>
+                <TableHead>Ideia de TCC</TableHead>
+                <TableHead>Data</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {solicitacoes.length > 0 ? (
+                solicitacoes.map((solicitacao) => (
+                  <TableRow key={solicitacao.id_solicitacao}>
+                    <TableCell className="font-medium">
+                      {solicitacao.professor?.usuario?.nome || "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      {solicitacao.ideiaTcc?.titulo || "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(
+                        solicitacao.data_solicitacao
+                      ).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>{getStatusText(solicitacao.status)}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
+                    Você ainda não enviou nenhuma solicitação.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
     </div>
   );

@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const solicitacaoController = require("../controllers/solicitacaoController");
-const { authenticateToken } = require("../middleware/authToken");
+const authMiddleware = require("../middleware/authToken");
 
-router.use(authenticateToken);
+router.use(authMiddleware.authenticateToken);
 
 router.post("/", solicitacaoController.criarSolicitacao);
+router.get("/minhas-solicitacoes", solicitacaoController.getMinhasSolicitacoes);
 
 module.exports = router;
