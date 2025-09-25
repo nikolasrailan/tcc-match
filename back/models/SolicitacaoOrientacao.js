@@ -52,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
       status: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 0, // 0: Pendente, 1: Aceito, 2: Rejeitado
+        defaultValue: 0, // 0: Pendente, 1: Aceito, 2: Rejeitado, 3: cancelada
       },
       data_solicitacao: {
         type: DataTypes.DATE,

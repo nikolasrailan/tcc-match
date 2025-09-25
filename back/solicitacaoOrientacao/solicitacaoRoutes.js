@@ -7,5 +7,6 @@ router.use(authMiddleware.authenticateToken);
 
 router.post("/", solicitacaoController.criarSolicitacao);
 router.get("/minhas-solicitacoes", solicitacaoController.getMinhasSolicitacoes);
+router.patch("/:id/cancelar", solicitacaoController.cancelarSolicitacao);
 
 module.exports = router;

@@ -1,3 +1,5 @@
+// nikolasrailan/tcc-match/tcc-match-8e21f0da37e33e5860d47f05cb0296deee62fed3/front/src/app/solicitar-orientacao/page.js
+
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
@@ -6,6 +8,7 @@ import {
   getMinhaIdeiaTcc,
   enviarSolicitacao,
   getMinhasSolicitacoes,
+  cancelarSolicitacao, // Importa a nova função
 } from "@/api/apiService";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,6 +108,18 @@ export default function SolicitarOrientacaoPage() {
     }
   };
 
+  const handleCancelar = async (id) => {
+    setLoading(true);
+    const result = await cancelarSolicitacao(id);
+    if (result) {
+      setSuccess("Solicitação cancelada com sucesso!");
+      fetchData();
+    } else {
+      setError("Não foi possível cancelar a solicitação.");
+    }
+    setLoading(false);
+  };
+
   const getStatusText = (status) => {
     switch (status) {
       case 0:
@@ -113,6 +128,8 @@ export default function SolicitarOrientacaoPage() {
         return <Badge>Aceito</Badge>;
       case 2:
         return <Badge variant="destructive">Rejeitado</Badge>;
+      case 3:
+        return <Badge variant="outline">Cancelada</Badge>;
       default:
         return <Badge variant="outline">Desconhecido</Badge>;
     }
@@ -207,6 +224,7 @@ export default function SolicitarOrientacaoPage() {
                 <TableHead>Ideia de TCC</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -225,11 +243,25 @@ export default function SolicitarOrientacaoPage() {
                       ).toLocaleDateString()}
                     </TableCell>
                     <TableCell>{getStatusText(solicitacao.status)}</TableCell>
+                    <TableCell>
+                      {solicitacao.status === 0 && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() =>
+                            handleCancelar(solicitacao.id_solicitacao)
+                          }
+                          disabled={loading}
+                        >
+                          Cancelar
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     Você ainda não enviou nenhuma solicitação.
                   </TableCell>
                 </TableRow>

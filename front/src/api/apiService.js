@@ -107,6 +107,11 @@ export const enviarSolicitacao = (dados) =>
 export const getMinhasSolicitacoes = () =>
   fetchApi("/solicitacoes/minhas-solicitacoes");
 
+export const cancelarSolicitacao = (id) =>
+  fetchApi(`/solicitacoes/${id}/cancelar`, {
+    method: "PATCH",
+  });
+
 // --- NOVAS Funções de Cursos ---
 export const getCursos = () => fetchApi("/cursos");
 
