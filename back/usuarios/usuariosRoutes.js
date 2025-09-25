@@ -82,7 +82,7 @@ router.post(
 );
 
 // Rota de atualização consolidada para lidar com todos os tipos de perfil
-router.patch("/:id", authenticateToken, async (req, res) => {
+router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
@@ -96,16 +96,6 @@ router.patch("/:id", authenticateToken, async (req, res) => {
       especializacao,
       disponibilidade,
     } = req.body;
-
-    const isSelf = req.user.id.toString() === id.toString();
-    const isUserAdmin = req.user.role === "admin";
-    if (!isSelf && !isUserAdmin) {
-      await t.rollback();
-      return res.status(403).json({
-        message:
-          "Acesso proibido. Você não tem permissão para editar este usuário.",
-      });
-    }
 
     const usuario = await Usuario.findByPk(id, {
       include: ["dadosAluno", "dadosProfessor"],
@@ -122,7 +112,7 @@ router.patch("/:id", authenticateToken, async (req, res) => {
     if (nome !== undefined) dadosUsuarioParaAtualizar.nome = nome;
     if (email !== undefined) dadosUsuarioParaAtualizar.email = email;
     // Permite que apenas admins mudem o isAdmin
-    if (isUserAdmin && newIsAdmin !== undefined) {
+    if (req.user.role === "admin" && newIsAdmin !== undefined) {
       dadosUsuarioParaAtualizar.isAdmin = newIsAdmin;
     }
     if (senha) {
