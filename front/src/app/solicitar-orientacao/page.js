@@ -39,7 +39,7 @@ export default function SolicitarOrientacaoPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [profData, ideiasData] = await Promise.all([
-      getProfessores(),
+      getProfessores(true), // Apenas professores disponíveis
       getMinhaIdeiaTcc(),
     ]);
 

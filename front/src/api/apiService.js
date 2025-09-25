@@ -91,7 +91,12 @@ export const deletarIdeiaTcc = (id) =>
   });
 
 // --- Funções de Professores Públicos ---
-export const getProfessores = () => fetchApi("/professores/public-list");
+export const getProfessores = (apenasDisponiveis = false) => {
+  const endpoint = apenasDisponiveis
+    ? "/professores/public-list?disponivel=true"
+    : "/professores/public-list";
+  return fetchApi(endpoint);
+};
 
 export const enviarSolicitacao = (dados) =>
   fetchApi("/solicitacoes", {

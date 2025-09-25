@@ -184,6 +184,7 @@ export default function UsuariosPage() {
     // Converte disponibilidade para o formato booleano
     const dadosParaEnvio = {
       ...dadosEdicao,
+      id_curso: dadosEdicao.id_curso ? parseInt(dadosEdicao.id_curso) : null,
       disponibilidade: dadosEdicao.disponibilidade === "1",
     };
 
@@ -196,7 +197,7 @@ export default function UsuariosPage() {
     if (result) {
       setSuccess("Usuário atualizado com sucesso!");
       handleCloseEditModal();
-      fetchUsuarios();
+      fetchUsuarios(); // <-- Isso recarrega a lista completa
     } else {
       setError("Ocorreu um erro ao atualizar o usuário.");
     }

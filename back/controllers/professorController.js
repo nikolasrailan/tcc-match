@@ -119,7 +119,13 @@ const professorController = {
   },
   async listarProfessoresPublic(req, res) {
     try {
+      const where = {};
+      if (req.query.disponivel === "true") {
+        where.disponibilidade = true;
+      }
+
       const professores = await Professor.findAll({
+        where,
         include: {
           model: Usuario,
           as: "usuario",
