@@ -1,5 +1,3 @@
-// nikolasrailan/tcc-match/tcc-match-8e21f0da37e33e5860d47f05cb0296deee62fed3/front/src/app/solicitar-orientacao/page.js
-
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
@@ -8,7 +6,7 @@ import {
   getMinhaIdeiaTcc,
   enviarSolicitacao,
   getMinhasSolicitacoes,
-  cancelarSolicitacao, // Importa a nova função
+  cancelarSolicitacao,
 } from "@/api/apiService";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,18 +28,31 @@ import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Modal, Box, Typography, Alert } from "@mui/material";
+
+const styleModal = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 400,
+  bgcolor: "background.paper",
+  border: "2px solid #000",
+  boxShadow: 24,
+  p: 4,
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+};
 
 export default function SolicitarOrientacaoPage() {
   useAuthRedirect();
-  const router = useRouter();
   const [professores, setProfessores] = useState([]);
   const [ideias, setIdeias] = useState([]);
   const [solicitacoes, setSolicitacoes] = useState([]);
@@ -50,6 +61,8 @@ export default function SolicitarOrientacaoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [solicitacaoToCancel, setSolicitacaoToCancel] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -108,9 +121,23 @@ export default function SolicitarOrientacaoPage() {
     }
   };
 
-  const handleCancelar = async (id) => {
+  const handleOpenCancelModal = (solicitacao) => {
+    setSolicitacaoToCancel(solicitacao);
+    setCancelModalOpen(true);
+  };
+
+  const handleCloseCancelModal = () => {
+    setSolicitacaoToCancel(null);
+    setCancelModalOpen(false);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!solicitacaoToCancel) return;
+
     setLoading(true);
-    const result = await cancelarSolicitacao(id);
+    const result = await cancelarSolicitacao(
+      solicitacaoToCancel.id_solicitacao
+    );
     if (result) {
       setSuccess("Solicitação cancelada com sucesso!");
       fetchData();
@@ -118,6 +145,7 @@ export default function SolicitarOrientacaoPage() {
       setError("Não foi possível cancelar a solicitação.");
     }
     setLoading(false);
+    handleCloseCancelModal();
   };
 
   const getStatusText = (status) => {
@@ -245,16 +273,14 @@ export default function SolicitarOrientacaoPage() {
                     <TableCell>{getStatusText(solicitacao.status)}</TableCell>
                     <TableCell>
                       {solicitacao.status === 0 && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() =>
-                            handleCancelar(solicitacao.id_solicitacao)
-                          }
+                        <a
+                          variant="link"
+                          className="text-red-600 p-0 h-auto"
+                          onClick={() => handleOpenCancelModal(solicitacao)}
                           disabled={loading}
                         >
                           Cancelar
-                        </Button>
+                        </a>
                       )}
                     </TableCell>
                   </TableRow>
@@ -270,6 +296,24 @@ export default function SolicitarOrientacaoPage() {
           </Table>
         </CardContent>
       </Card>
+      <Modal open={cancelModalOpen} onClose={handleCloseCancelModal}>
+        <Box sx={styleModal}>
+          <Typography variant="h6">Confirmar Cancelamento</Typography>
+          <Typography>
+            Tem certeza que deseja cancelar esta solicitação?
+          </Typography>
+          <Box
+            sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}
+          >
+            <Button variant="outline" onClick={handleCloseCancelModal}>
+              Não
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmCancel}>
+              Sim, cancelar
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
     </div>
   );
 }
