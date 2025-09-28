@@ -1,7 +1,10 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-import { getTodasIdeiasTcc } from "@/api/apiService";
+import {
+  getSolicitacoesProfessor,
+  responderSolicitacao,
+} from "@/api/apiService";
 import {
   Box,
   CircularProgress,
@@ -15,17 +18,17 @@ import {
   Alert,
 } from "@mui/material";
 
-const IdeiaTccCard = ({ ideia }) => {
+const SolicitacaoCard = ({ solicitacao, onResponder }) => {
   const getStatusChip = (status) => {
     switch (status) {
       case 0:
-        return <Chip label="Submetido" color="info" />;
+        return <Chip label="Pendente" color="warning" />;
       case 1:
-        return <Chip label="Em Avaliação" color="warning" />;
+        return <Chip label="Aceito" color="success" />;
       case 2:
-        return <Chip label="Aprovado" color="success" />;
-      case 3:
         return <Chip label="Rejeitado" color="error" />;
+      case 3:
+        return <Chip label="Cancelada" />;
       default:
         return <Chip label="Desconhecido" />;
     }
@@ -35,26 +38,34 @@ const IdeiaTccCard = ({ ideia }) => {
     <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <CardContent sx={{ flexGrow: 1 }}>
         <Typography variant="h6" gutterBottom>
-          {ideia.titulo}
+          {solicitacao.ideiaTcc.titulo}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {ideia.descricao}
+          {solicitacao.ideiaTcc.descricao}
         </Typography>
         <Typography variant="caption" display="block">
-          Aluno: {ideia.aluno?.dadosUsuario?.nome || "Não informado"}
+          Aluno: {solicitacao.aluno?.dadosUsuario?.nome || "Não informado"}
         </Typography>
         <Typography variant="caption" display="block">
-          Email: {ideia.aluno?.dadosUsuario?.email || "Não informado"}
+          Email: {solicitacao.aluno?.dadosUsuario?.email || "Não informado"}
         </Typography>
-        <Box sx={{ mt: 2 }}>{getStatusChip(ideia.status)}</Box>
+        <Box sx={{ mt: 2 }}>{getStatusChip(solicitacao.status)}</Box>
       </CardContent>
       <CardActions>
-        {ideia.status === 0 && (
+        {solicitacao.status === 0 && (
           <>
-            <Button size="small" color="success">
+            <Button
+              size="small"
+              color="success"
+              onClick={() => onResponder(solicitacao.id_solicitacao, true)}
+            >
               Aprovar
             </Button>
-            <Button size="small" color="error">
+            <Button
+              size="small"
+              color="error"
+              onClick={() => onResponder(solicitacao.id_solicitacao, false)}
+            >
               Rejeitar
             </Button>
           </>
@@ -64,22 +75,22 @@ const IdeiaTccCard = ({ ideia }) => {
   );
 };
 
-export default function ProfessorPage() {
+export default function ProfessorPainelPage() {
   useAuthRedirect();
-  const [ideias, setIdeias] = useState([]);
+  const [solicitacoes, setSolicitacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchIdeias = useCallback(async () => {
+  const fetchSolicitacoes = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getTodasIdeiasTcc();
+      const data = await getSolicitacoesProfessor();
       if (data && Array.isArray(data)) {
-        setIdeias(data);
+        setSolicitacoes(data);
       } else if (data === null) {
         setError(
-          "Não foi possível carregar as ideias. Você tem permissão para ver esta página?"
+          "Não foi possível carregar as solicitações. Você tem permissão para ver esta página?"
         );
       }
     } catch (e) {
@@ -90,8 +101,17 @@ export default function ProfessorPage() {
   }, []);
 
   useEffect(() => {
-    fetchIdeias();
-  }, [fetchIdeias]);
+    fetchSolicitacoes();
+  }, [fetchSolicitacoes]);
+
+  const handleResponder = async (id, aceito) => {
+    const result = await responderSolicitacao(id, aceito);
+    if (result) {
+      fetchSolicitacoes();
+    } else {
+      setError("Ocorreu um erro ao responder à solicitação.");
+    }
+  };
 
   if (loading) {
     return (
@@ -104,7 +124,7 @@ export default function ProfessorPage() {
   return (
     <Box sx={{ p: 3, maxWidth: "1200px", margin: "auto" }}>
       <Typography variant="h4" gutterBottom>
-        Painel do Professor - Ideias de TCC
+        Painel do Professor - Solicitações de Orientação
       </Typography>
 
       {error && (
@@ -113,18 +133,21 @@ export default function ProfessorPage() {
         </Alert>
       )}
 
-      {ideias.length > 0 ? (
+      {solicitacoes.length > 0 ? (
         <Grid container spacing={3}>
-          {ideias.map((ideia) => (
-            <Grid item xs={12} sm={6} md={4} key={ideia.id_ideia_tcc}>
-              <IdeiaTccCard ideia={ideia} />
+          {solicitacoes.map((solicitacao) => (
+            <Grid item xs={12} sm={6} md={4} key={solicitacao.id_solicitacao}>
+              <SolicitacaoCard
+                solicitacao={solicitacao}
+                onResponder={handleResponder}
+              />
             </Grid>
           ))}
         </Grid>
       ) : (
         !error && (
           <Typography sx={{ textAlign: "center", mt: 2 }}>
-            Nenhuma ideia de TCC foi submetida ainda.
+            Nenhuma solicitação de orientação foi recebida ainda.
           </Typography>
         )
       )}

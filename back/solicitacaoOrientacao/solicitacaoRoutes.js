@@ -9,4 +9,8 @@ router.post("/", solicitacaoController.criarSolicitacao);
 router.get("/minhas-solicitacoes", solicitacaoController.getMinhasSolicitacoes);
 router.patch("/:id/cancelar", solicitacaoController.cancelarSolicitacao);
 
+// rotas professor
+router.get("/professor", solicitacaoController.getSolicitacoesParaProfessor);
+router.patch("/:id/responder", solicitacaoController.responderSolicitacao);
+
 module.exports = router;

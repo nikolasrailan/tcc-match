@@ -107,11 +107,9 @@ const solicitacaoController = {
       }
 
       if (solicitacao.status !== 0) {
-        return res
-          .status(400)
-          .json({
-            error: "Apenas solicitações pendentes podem ser canceladas.",
-          });
+        return res.status(400).json({
+          error: "Apenas solicitações pendentes podem ser canceladas.",
+        });
       }
 
       solicitacao.status = 3; // Cancelada
@@ -123,6 +121,86 @@ const solicitacaoController = {
       res
         .status(500)
         .json({ error: "Ocorreu um erro ao cancelar a solicitação." });
+    }
+  },
+
+  async getSolicitacoesParaProfessor(req, res) {
+    try {
+      const idUsuario = req.user.id;
+      const professor = await Professor.findOne({
+        where: { id_usuario: idUsuario },
+      });
+
+      if (!professor) {
+        return res.status(403).json({ error: "Usuário não é um professor." });
+      }
+
+      const solicitacoes = await SolicitacaoOrientacao.findAll({
+        where: { id_professor: professor.id_professor },
+        include: [
+          {
+            model: Aluno,
+            as: "aluno",
+            include: {
+              model: Usuario,
+              as: "dadosUsuario",
+              attributes: ["nome", "email"],
+            },
+          },
+          {
+            model: IdeiaTcc,
+            as: "ideiaTcc",
+            attributes: ["titulo", "descricao"],
+          },
+        ],
+        order: [["data_solicitacao", "DESC"]],
+      });
+
+      res.status(200).json(solicitacoes);
+    } catch (error) {
+      console.error("Erro ao buscar solicitações para o professor:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao buscar as solicitações." });
+    }
+  },
+
+  async responderSolicitacao(req, res) {
+    try {
+      const { id } = req.params;
+      const { aceito } = req.body; // true para aceitar, false para rejeitar
+      const idUsuario = req.user.id;
+
+      const professor = await Professor.findOne({
+        where: { id_usuario: idUsuario },
+      });
+      if (!professor) {
+        return res.status(403).json({ error: "Acesso negado." });
+      }
+
+      const solicitacao = await SolicitacaoOrientacao.findOne({
+        where: { id_solicitacao: id, id_professor: professor.id_professor },
+      });
+
+      if (!solicitacao) {
+        return res.status(404).json({ error: "Solicitação não encontrada." });
+      }
+
+      if (solicitacao.status !== 0) {
+        return res
+          .status(400)
+          .json({ error: "Esta solicitação já foi respondida." });
+      }
+
+      solicitacao.status = aceito ? 1 : 2; // 1: Aceito, 2: Rejeitado
+      await solicitacao.save();
+
+      res.status(200).json({ message: "Solicitação respondida com sucesso." });
+    } catch (error) {
+      console.error("Erro ao responder solicitação:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao responder a solicitação." });
     }
   },
 };

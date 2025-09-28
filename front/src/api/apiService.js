@@ -112,6 +112,15 @@ export const cancelarSolicitacao = (id) =>
     method: "PATCH",
   });
 
+export const getSolicitacoesProfessor = () =>
+  fetchApi("/solicitacoes/professor");
+
+export const responderSolicitacao = (id, aceito) =>
+  fetchApi(`/solicitacoes/${id}/responder`, {
+    method: "PATCH",
+    body: JSON.stringify({ aceito }),
+  });
+
 // --- NOVAS Funções de Cursos ---
 export const getCursos = () => fetchApi("/cursos");
 
