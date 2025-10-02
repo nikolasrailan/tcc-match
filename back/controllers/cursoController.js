@@ -31,6 +31,31 @@ const cursoController = {
     }
   },
 
+  async atualizarCurso(req, res) {
+    try {
+      const { id } = req.params;
+      const { nome } = req.body;
+      const curso = await Curso.findByPk(id);
+
+      if (!curso) {
+        return res.status(404).json({ message: "Curso não encontrado." });
+      }
+
+      curso.nome = nome;
+      await curso.save();
+
+      return res.status(200).json(curso);
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        return res.status(409).json({ message: "O nome do curso já existe." });
+      }
+      console.error("Erro ao atualizar curso:", error);
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao atualizar o curso." });
+    }
+  },
+
   async deletarCurso(req, res) {
     try {
       const { id } = req.params;

@@ -1,7 +1,12 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-import { getCursos, criarCurso, deletarCurso } from "@/api/apiService";
+import {
+  getCursos,
+  criarCurso,
+  deletarCurso,
+  atualizarCurso,
+} from "@/api/apiService";
 import {
   Table,
   TableBody,
@@ -40,6 +45,8 @@ export default function CursosPage() {
   const [cursos, setCursos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [cursoEmEdicao, setCursoEmEdicao] = useState(null);
   const [novoCursoNome, setNovoCursoNome] = useState("");
   const [error, setError] = useState("");
 
@@ -66,6 +73,19 @@ export default function CursosPage() {
     setModalOpen(false);
   };
 
+  const handleOpenEditModal = (curso) => {
+    setCursoEmEdicao(curso);
+    setNovoCursoNome(curso.nome);
+    setEditModalOpen(true);
+    setError("");
+  };
+
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setCursoEmEdicao(null);
+    setNovoCursoNome("");
+  };
+
   const handleCreateCurso = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -84,6 +104,30 @@ export default function CursosPage() {
       fetchCursos();
     } else {
       setError("Erro ao criar curso. O nome pode já existir.");
+    }
+    setLoading(false);
+  };
+
+  const handleUpdateCurso = async (e) => {
+    e.preventDefault();
+    if (!cursoEmEdicao) return;
+    setLoading(true);
+    setError("");
+
+    if (!novoCursoNome.trim()) {
+      setError("O nome do curso não pode ser vazio.");
+      setLoading(false);
+      return;
+    }
+
+    const result = await atualizarCurso(cursoEmEdicao.id_curso, {
+      nome: novoCursoNome,
+    });
+    if (result) {
+      handleCloseEditModal();
+      fetchCursos();
+    } else {
+      setError("Erro ao atualizar curso. O nome pode já existir.");
     }
     setLoading(false);
   };
@@ -148,6 +192,15 @@ export default function CursosPage() {
                   <Button
                     variant="outlined"
                     size="small"
+                    color="primary"
+                    onClick={() => handleOpenEditModal(curso)}
+                    sx={{ mr: 1 }}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
                     color="error"
                     onClick={() => handleDeleteCurso(curso.id_curso)}
                   >
@@ -175,6 +228,25 @@ export default function CursosPage() {
           />
           <Button type="submit" variant="contained" disabled={loading}>
             {loading ? "Criando..." : "Confirmar"}
+          </Button>
+        </Box>
+      </Modal>
+
+      {/* Modal para editar curso */}
+      <Modal open={editModalOpen} onClose={handleCloseEditModal}>
+        <Box sx={styleModal} component="form" onSubmit={handleUpdateCurso}>
+          <Typography variant="h6">Editar Curso</Typography>
+          {error && <Alert severity="error">{error}</Alert>}
+          <TextField
+            name="nome"
+            label="Nome do Curso"
+            onChange={(e) => setNovoCursoNome(e.target.value)}
+            value={novoCursoNome}
+            required
+            fullWidth
+          />
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? "Salvando..." : "Salvar Alterações"}
           </Button>
         </Box>
       </Modal>

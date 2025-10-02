@@ -134,3 +134,9 @@ export const deletarCurso = (id) =>
   fetchApi(`/cursos/${id}`, {
     method: "DELETE",
   });
+
+export const atualizarCurso = (id, dados) =>
+  fetchApi(`/cursos/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dados),
+  });
