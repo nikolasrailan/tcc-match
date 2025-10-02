@@ -116,7 +116,7 @@ export default function SolicitarOrientacaoPage() {
       setSelectedProfessor("");
     } else {
       setError(
-        "Não foi possível enviar a solicitação. Verifique se já não existe uma solicitação para esta ideia."
+        "Não foi possível enviar a solicitação. Verifique se já não existe uma solicitação para esta ideia ou alguma pendente."
       );
     }
   };

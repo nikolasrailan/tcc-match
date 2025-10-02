@@ -20,7 +20,22 @@ const solicitacaoController = {
           .json({ error: "Apenas alunos podem enviar solicitações." });
       }
 
-      // Verifica se já existe uma solicitação pendente para a mesma ideia
+      // Verifica se o aluno já possui alguma solicitação pendente
+      const solicitacaoPendenteAluno = await SolicitacaoOrientacao.findOne({
+        where: {
+          id_aluno: aluno.id_aluno,
+          status: 0, // Pendente
+        },
+      });
+
+      if (solicitacaoPendenteAluno) {
+        return res.status(409).json({
+          error:
+            "Você já possui uma solicitação de orientação pendente. Aguarde a resposta antes de enviar outra.",
+        });
+      }
+
+      // Mantém a verificação para a ideia específica, garantindo a integridade
       const solicitacaoExistente = await SolicitacaoOrientacao.findOne({
         where: {
           id_ideia_tcc,

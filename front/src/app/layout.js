@@ -11,7 +11,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body>
-        <Navbar /> {/* Use o novo componente aqui */}
+        <Navbar />
         <main className="p-8">{children}</main>
       </body>
     </html>
