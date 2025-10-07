@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
         through: "professor_areas",
         foreignKey: "id_area",
         as: "professores",
+        timestamps: false,
       });
     }
   }

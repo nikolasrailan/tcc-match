@@ -47,22 +47,35 @@ export default function ProfessoresPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Especialização</TableHead>
+                  <TableHead>Áreas de Interesse</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {professores.map((prof) => (
-                  <TableRow key={prof.usuario.email}>
+                  <TableRow key={prof.id_professor}>
                     <TableCell className="font-medium">
                       {prof.usuario.nome}
                     </TableCell>
-                    <TableCell>{prof.especializacao}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {prof.areasDeInteresse &&
+                        prof.areasDeInteresse.length > 0 ? (
+                          prof.areasDeInteresse.map((area) => (
+                            <Badge key={area.id_area} variant="secondary">
+                              {area.nome}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-500">Nenhuma</span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{prof.usuario.email}</TableCell>
                     <TableCell>
                       {prof.disponibilidade ? (
-                        <Badge variant="green-400">Disponível</Badge>
+                        <Badge>Disponível</Badge>
                       ) : (
                         <Badge variant="destructive">Indisponível</Badge>
                       )}
