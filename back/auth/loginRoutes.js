@@ -7,7 +7,7 @@ const {
   Professor,
   Curso,
   AreaInteresse,
-} = require("../models"); // Importa o modelo Curso
+} = require("../models"); // Importa AreaInteresse
 const bcrypt = require("bcryptjs");
 
 router.post("/", async (req, res) => {
@@ -29,7 +29,13 @@ router.post("/", async (req, res) => {
         {
           model: Professor,
           as: "dadosProfessor",
-          include: { model: AreaInteresse, as: "areasDeInteresse" },
+          // Inclui a associação com as áreas de interesse
+          include: {
+            model: AreaInteresse,
+            as: "areasDeInteresse",
+            attributes: ["id_area", "nome"],
+            through: { attributes: [] }, // Não traz os dados da tabela de junção
+          },
         },
       ],
     });

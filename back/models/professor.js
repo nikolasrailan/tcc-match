@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "id_usuario",
         as: "usuario",
       });
+      // Associação com as áreas de interesse
       this.belongsToMany(models.AreaInteresse, {
         through: "professor_areas",
         foreignKey: "id_professor",
@@ -22,7 +23,6 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
       },
       disponibilidade: DataTypes.BOOLEAN,
-      especializacao: DataTypes.STRING,
       id_usuario: DataTypes.INTEGER,
     },
     {

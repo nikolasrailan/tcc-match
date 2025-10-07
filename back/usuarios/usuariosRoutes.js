@@ -1,7 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
-const { Usuario, Professor, Aluno, Curso, sequelize } = require("../models");
+const {
+  Usuario,
+  Professor,
+  Aluno,
+  Curso,
+  AreaInteresse,
+  sequelize,
+} = require("../models");
 const bcrypt = require("bcryptjs");
 const { authenticateToken, isAdmin } = require("../middleware/authToken");
 
@@ -12,12 +19,17 @@ router.get("/", authenticateToken, isAdmin, async (req, res) => {
         {
           model: Professor,
           as: "dadosProfessor",
-          attributes: ["id_professor", "especializacao", "disponibilidade"],
+          include: {
+            model: AreaInteresse,
+            as: "areasDeInteresse",
+            attributes: ["id_area", "nome"],
+            through: { attributes: [] },
+          },
+          attributes: ["id_professor", "disponibilidade"],
         },
         {
           model: Aluno,
           as: "dadosAluno",
-          // O retorno do cursoInfo com o nome do curso para o front-end
           include: {
             model: Curso,
             as: "cursoInfo",
@@ -93,7 +105,7 @@ router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
       isAdmin: newIsAdmin,
       matricula,
       id_curso,
-      especializacao,
+      areasDeInteresse,
       disponibilidade,
     } = req.body;
 
@@ -139,12 +151,17 @@ router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
     // Atualiza perfil de Professor, se existir
     if (usuario.dadosProfessor) {
       const dadosProfessorParaAtualizar = {};
-      if (especializacao !== undefined)
-        dadosProfessorParaAtualizar.especializacao = especializacao;
       if (disponibilidade !== undefined)
         dadosProfessorParaAtualizar.disponibilidade = disponibilidade;
+
       if (Object.keys(dadosProfessorParaAtualizar).length > 0) {
         await usuario.dadosProfessor.update(dadosProfessorParaAtualizar, {
+          transaction: t,
+        });
+      }
+      // Atualiza as áreas de interesse associadas
+      if (areasDeInteresse) {
+        await usuario.dadosProfessor.setAreasDeInteresse(areasDeInteresse, {
           transaction: t,
         });
       }
@@ -156,7 +173,11 @@ router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
     const usuarioAtualizado = await Usuario.findByPk(id, {
       include: [
         { model: Aluno, as: "dadosAluno", include: ["cursoInfo"] },
-        { model: Professor, as: "dadosProfessor" },
+        {
+          model: Professor,
+          as: "dadosProfessor",
+          include: ["areasDeInteresse"],
+        },
       ],
       attributes: { exclude: ["senha"] },
     });
