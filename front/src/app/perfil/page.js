@@ -15,13 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Box,
   Chip,
   FormControl,
@@ -29,6 +22,7 @@ import {
   MenuItem,
   OutlinedInput,
   Select as MuiSelect,
+  Typography,
 } from "@mui/material";
 
 export default function PerfilPage() {
@@ -188,9 +182,11 @@ export default function PerfilPage() {
             {user.dadosProfessor && (
               <>
                 <div className="space-y-2">
-                  <Label>Áreas de Interesse</Label>
+                  <Label className="mt-2">Editar Áreas de Interesse</Label>
                   <FormControl fullWidth>
-                    <Select
+                    <InputLabel id="areas-label">Áreas</InputLabel>
+                    <MuiSelect
+                      labelId="areas-label"
                       multiple
                       value={formData.areasDeInteresse || []}
                       onChange={(e) =>
@@ -217,7 +213,7 @@ export default function PerfilPage() {
                           {area.nome}
                         </MenuItem>
                       ))}
-                    </Select>
+                    </MuiSelect>
                   </FormControl>
                 </div>
                 <div className="space-y-2">
@@ -242,7 +238,7 @@ export default function PerfilPage() {
               {error && <p className="text-red-500 text-sm">{error}</p>}
               {success && <p className="text-green-500 text-sm">{success}</p>}
             </div>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="mt-2">
               {loading ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </CardFooter>
