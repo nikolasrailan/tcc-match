@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-import { updateUsuario, getCursos } from "@/api/apiService";
+import { updateUsuario, getAreasInteresse } from "@/api/apiService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,50 +21,72 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Box,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  OutlinedInput,
+  Select as MuiSelect,
+} from "@mui/material";
 
 export default function PerfilPage() {
   useAuthRedirect();
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({});
+  const [allAreas, setAllAreas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  useEffect(() => {
-    // A página só deve carregar se o usuário estiver no localStorage.
+  const fetchInitialData = useCallback(async () => {
     if (typeof window !== "undefined") {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          setFormData({
+
+          const initialFormData = {
             nome: parsedUser.nome || "",
             email: parsedUser.email || "",
             matricula: parsedUser.dadosAluno?.matricula || "",
-            // Agora, vamos pegar o nome do curso para exibição no input
             curso: parsedUser.dadosAluno?.cursoInfo?.nome || "",
-            especializacao: parsedUser.dadosProfessor?.especializacao || "",
             disponibilidade: parsedUser.dadosProfessor?.disponibilidade
               ? "disponivel"
               : "indisponivel",
-          });
+            areasDeInteresse:
+              parsedUser.dadosProfessor?.areasDeInteresse?.map(
+                (a) => a.id_area
+              ) || [],
+          };
+          setFormData(initialFormData);
+
+          if (parsedUser.dadosProfessor) {
+            const areasData = await getAreasInteresse();
+            if (areasData) {
+              setAllAreas(areasData);
+            }
+          }
         } catch (e) {
-          console.error("Falha ao analisar o usuário do localStorage", e);
+          console.error("Falha ao carregar dados do perfil", e);
         }
       }
     }
   }, []);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (value) => {
-    if (user.dadosProfessor) {
-      setFormData((prev) => ({ ...prev, disponibilidade: value }));
-    }
+  const handleSelectChange = (name, value) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -82,19 +104,16 @@ export default function PerfilPage() {
     const dataToUpdate = {
       nome: formData.nome,
       email: formData.email,
-      ...(user.dadosAluno && {
-        matricula: formData.matricula,
-        // Não envie o campo de curso na atualização, já que ele é somente leitura
-        // id_curso: formData.id_curso,
-      }),
-      ...(user.dadosProfessor && {
-        especializacao: formData.especializacao,
-        disponibilidade: formData.disponibilidade === "disponivel",
-      }),
     };
 
+    if (user.dadosAluno) {
+      dataToUpdate.matricula = formData.matricula;
+    }
+
     if (user.dadosProfessor) {
-      dataToUpdate.disponibilidade = dataToUpdate.disponibilidade ? 1 : 0;
+      dataToUpdate.disponibilidade =
+        formData.disponibilidade === "disponivel" ? 1 : 0;
+      dataToUpdate.areasDeInteresse = formData.areasDeInteresse;
     }
 
     const result = await updateUsuario(user.id_usuario, dataToUpdate);
@@ -102,10 +121,8 @@ export default function PerfilPage() {
 
     if (result && result.user) {
       setSuccess("Perfil atualizado com sucesso!");
-      // Atualizar o estado do componente com os novos dados recebidos do backend
-      setUser(result.user);
-      // Atualizar também o localStorage
       localStorage.setItem("user", JSON.stringify(result.user));
+      setUser(result.user);
     } else {
       setError("Ocorreu um erro ao atualizar o perfil.");
     }
@@ -120,10 +137,11 @@ export default function PerfilPage() {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Meu Perfil</CardTitle>
-          <CardDescription>Atualize suas informações pessoais.</CardDescription>
+          <CardDescription>Atualize suas informações.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {/* Campos comuns */}
             <div className="space-y-2">
               <Label htmlFor="nome">Nome</Label>
               <Input
@@ -143,7 +161,7 @@ export default function PerfilPage() {
                 onChange={handleChange}
               />
             </div>
-            {/* Campos para Aluno */}
+            {/* Campos Aluno */}
             {user.dadosAluno && (
               <>
                 <div className="space-y-2">
@@ -161,38 +179,60 @@ export default function PerfilPage() {
                     id="curso"
                     name="curso"
                     value={formData.curso || ""}
-                    disabled // O campo de curso não é editável para o aluno
+                    disabled
                   />
                 </div>
               </>
             )}
-            {/* Campos para Professor */}
+            {/* Campos Professor */}
             {user.dadosProfessor && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="especializacao">Especialização</Label>
-                  <Input
-                    id="especializacao"
-                    name="especializacao"
-                    value={formData.especializacao || ""}
-                    onChange={handleChange}
-                  />
+                  <Label>Áreas de Interesse</Label>
+                  <FormControl fullWidth>
+                    <Select
+                      multiple
+                      value={formData.areasDeInteresse || []}
+                      onChange={(e) =>
+                        handleSelectChange("areasDeInteresse", e.target.value)
+                      }
+                      input={<OutlinedInput label="Áreas" />}
+                      renderValue={(selected) => (
+                        <Box
+                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
+                        >
+                          {selected.map((value) => {
+                            const area = allAreas.find(
+                              (a) => a.id_area === value
+                            );
+                            return (
+                              <Chip key={value} label={area ? area.nome : ""} />
+                            );
+                          })}
+                        </Box>
+                      )}
+                    >
+                      {allAreas.map((area) => (
+                        <MenuItem key={area.id_area} value={area.id_area}>
+                          {area.nome}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="disponibilidade">Disponibilidade</Label>
-                  <Select
+                  <Label>Disponibilidade</Label>
+                  <MuiSelect
                     name="disponibilidade"
                     value={formData.disponibilidade}
-                    onValueChange={(value) => handleSelectChange(value)}
+                    onChange={(e) =>
+                      handleSelectChange("disponibilidade", e.target.value)
+                    }
+                    fullWidth
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="disponivel">Disponível</SelectItem>
-                      <SelectItem value="indisponivel">Indisponível</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <MenuItem value="disponivel">Disponível</MenuItem>
+                    <MenuItem value="indisponivel">Indisponível</MenuItem>
+                  </MuiSelect>
                 </div>
               </>
             )}

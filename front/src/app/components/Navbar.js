@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
@@ -23,7 +23,6 @@ export default function Navbar() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Check if window is defined (ensures this runs only on the client-side)
     if (typeof window !== "undefined") {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
@@ -32,8 +31,6 @@ export default function Navbar() {
         } catch (e) {
           console.error("Failed to parse user from localStorage", e);
           setUser(null);
-          // consider clearing the invalid item from localStorage
-          // localStorage.removeItem("user");
         }
       } else {
         setUser(null);
@@ -43,8 +40,8 @@ export default function Navbar() {
 
   const getInitials = (name) => {
     if (!name) return "";
-    const names = name.split(" ");
-    return names
+    return name
+      .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase();
@@ -59,30 +56,41 @@ export default function Navbar() {
         <Link href="/" className={cn(navigationMenuTriggerStyle())}>
           Home
         </Link>
-        {!!user?.dadosAluno && (
+        {user?.dadosAluno && (
           <Link href="/aluno" className={cn(navigationMenuTriggerStyle())}>
             Minhas Ideias
           </Link>
         )}
-        {!!user?.dadosProfessor && (
+        {user?.dadosProfessor && (
           <Link href="/professor" className={cn(navigationMenuTriggerStyle())}>
             Painel Professor
           </Link>
         )}
-        {!!user?.isAdmin && (
-          <Link href="/usuarios" className={cn(navigationMenuTriggerStyle())}>
-            Admin
-          </Link>
+        {user?.isAdmin && (
+          <>
+            <Link href="/usuarios" className={cn(navigationMenuTriggerStyle())}>
+              Usuários
+            </Link>
+            <Link href="/cursos" className={cn(navigationMenuTriggerStyle())}>
+              Cursos
+            </Link>
+            <Link
+              href="/areas-interesse"
+              className={cn(navigationMenuTriggerStyle())}
+            >
+              Áreas
+            </Link>
+          </>
         )}
-        {!!user?.dadosAluno && (
+        {user?.dadosAluno && (
           <Link
             href="/professores"
             className={cn(navigationMenuTriggerStyle())}
           >
-            Professores Disponíveis
+            Professores
           </Link>
         )}
-        {!!user?.dadosAluno && (
+        {user?.dadosAluno && (
           <Link
             href="/solicitar-orientacao"
             className={cn(navigationMenuTriggerStyle())}
@@ -95,7 +103,7 @@ export default function Navbar() {
       {user ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Avatar className="h-8 w-8">
+            <Avatar className="h-8 w-8 cursor-pointer">
               <AvatarFallback>{getInitials(user.nome)}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>

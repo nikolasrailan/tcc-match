@@ -27,6 +27,11 @@ async function fetchApi(endpoint, options = {}) {
       );
     }
 
+    // Handle cases with no content in response
+    if (response.status === 204) {
+      return { success: true };
+    }
+
     if (contentType && contentType.includes("application/json")) {
       return await response.json();
     }
@@ -98,6 +103,7 @@ export const getProfessores = (apenasDisponiveis = false) => {
   return fetchApi(endpoint);
 };
 
+// --- Funções de Solicitação ---
 export const enviarSolicitacao = (dados) =>
   fetchApi("/solicitacoes", {
     method: "POST",
@@ -121,7 +127,7 @@ export const responderSolicitacao = (id, aceito) =>
     body: JSON.stringify({ aceito }),
   });
 
-// --- NOVAS Funções de Cursos ---
+// --- Funções de Cursos ---
 export const getCursos = () => fetchApi("/cursos");
 
 export const criarCurso = (dados) =>
@@ -139,4 +145,24 @@ export const atualizarCurso = (id, dados) =>
   fetchApi(`/cursos/${id}`, {
     method: "PATCH",
     body: JSON.stringify(dados),
+  });
+
+// --- NOVAS Funções de Áreas de Interesse ---
+export const getAreasInteresse = () => fetchApi("/areas-interesse");
+
+export const criarAreaInteresse = (dados) =>
+  fetchApi("/areas-interesse", {
+    method: "POST",
+    body: JSON.stringify(dados),
+  });
+
+export const atualizarAreaInteresse = (id, dados) =>
+  fetchApi(`/areas-interesse/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(dados),
+  });
+
+export const deletarAreaInteresse = (id) =>
+  fetchApi(`/areas-interesse/${id}`, {
+    method: "DELETE",
   });
