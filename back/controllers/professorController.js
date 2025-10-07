@@ -1,9 +1,9 @@
-const { Professor, Usuario } = require("../models");
+const { Professor, Usuario, AreaInteresse } = require("../models");
 
 const professorController = {
   async criarProfessor(req, res) {
     try {
-      const { disponibilidade, especializacao, id_usuario } = req.body;
+      const { disponibilidade, id_usuario, areasDeInteresse } = req.body;
 
       const usuarioExiste = await Usuario.findByPk(id_usuario);
       if (!usuarioExiste) {
@@ -46,11 +46,19 @@ const professorController = {
   async listarProfessores(req, res) {
     try {
       const professores = await Professor.findAll({
-        include: {
-          model: Usuario,
-          as: "usuario",
-          attributes: ["id_usuario", "nome", "email"], // Apenas campos úteis
-        },
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["id_usuario", "nome", "email"], // Apenas campos úteis
+          },
+          {
+            model: AreaInteresse,
+            as: "areasDeInteresse",
+            attributes: ["id_area", "nome"],
+            through: { attributes: [] },
+          },
+        ],
       });
       return res.status(200).json(professores);
     } catch (error) {
@@ -141,11 +149,19 @@ const professorController = {
 
       const professores = await Professor.findAll({
         where,
-        include: {
-          model: Usuario,
-          as: "usuario",
-          attributes: ["nome", "email"],
-        },
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nome", "email"],
+          },
+          {
+            model: AreaInteresse,
+            as: "areasDeInteresse",
+            attributes: ["id_area", "nome"],
+            through: { attributes: [] },
+          },
+        ],
         order: [
           ["disponibilidade", "DESC"],
           [{ model: Usuario, as: "usuario" }, "nome", "ASC"],
