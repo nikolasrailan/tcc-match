@@ -21,11 +21,21 @@ const professorController = {
 
       const novoProfessor = await Professor.create({
         disponibilidade,
-        especializacao,
         id_usuario,
       });
 
-      return res.status(201).json(novoProfessor);
+      if (areasDeInteresse && areasDeInteresse.length > 0) {
+        await novoProfessor.setAreasDeInteresse(areasDeInteresse);
+      }
+
+      const professorCompleto = await Professor.findByPk(
+        novoProfessor.id_professor,
+        {
+          include: ["usuario", "areasDeInteresse"],
+        }
+      );
+
+      return res.status(201).json(professorCompleto);
     } catch (error) {
       console.error(error);
       return res
@@ -53,7 +63,7 @@ const professorController = {
 
   async atualizarProfessor(req, res) {
     const { id } = req.params;
-    const { disponibilidade, especializacao } = req.body;
+    const { disponibilidade, areasDeInteresse } = req.body;
     const userId = req.user.id;
     const isAdmin = req.user.role === "admin";
 
@@ -76,13 +86,18 @@ const professorController = {
       if (disponibilidade !== undefined) {
         professor.disponibilidade = disponibilidade;
       }
-      if (especializacao) {
-        professor.especializacao = especializacao;
-      }
 
       await professor.save();
 
-      return res.status(200).json(professor);
+      if (areasDeInteresse) {
+        await professor.setAreasDeInteresse(areasDeInteresse);
+      }
+
+      const professorAtualizado = await Professor.findByPk(id, {
+        include: ["usuario", "areasDeInteresse"],
+      });
+
+      return res.status(200).json(professorAtualizado);
     } catch (error) {
       console.error("Erro ao atualizar professor:", error);
       return res

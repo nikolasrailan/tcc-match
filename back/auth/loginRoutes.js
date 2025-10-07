@@ -1,7 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
-const { Usuario, Aluno, Professor, Curso } = require("../models"); // Importa o modelo Curso
+const {
+  Usuario,
+  Aluno,
+  Professor,
+  Curso,
+  AreaInteresse,
+} = require("../models"); // Importa o modelo Curso
 const bcrypt = require("bcryptjs");
 
 router.post("/", async (req, res) => {
@@ -20,7 +26,11 @@ router.post("/", async (req, res) => {
             attributes: ["id_curso", "nome"],
           },
         },
-        { model: Professor, as: "dadosProfessor" },
+        {
+          model: Professor,
+          as: "dadosProfessor",
+          include: { model: AreaInteresse, as: "areasDeInteresse" },
+        },
       ],
     });
 

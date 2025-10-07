@@ -13,6 +13,7 @@ const alunoRoutes = require("./alunos/alunoRoutes");
 const ideiaTccRoutes = require("./ideiaTcc/ideiaTccRoutes");
 const solicitacaoRoutes = require("./solicitacaoOrientacao/solicitacaoRoutes");
 const cursoRoutes = require("./cursos/cursoRoutes");
+const areaInteresseRoutes = require("./areaInteresse/areaInteresseRoutes");
 
 app.use("/usuarios", usuariosRoutes);
 app.use("/login", loginRoutes);
@@ -21,6 +22,7 @@ app.use("/alunos", alunoRoutes);
 app.use("/ideias-tcc", ideiaTccRoutes);
 app.use("/solicitacoes", solicitacaoRoutes);
 app.use("/cursos", cursoRoutes);
+app.use("/areas-interesse", areaInteresseRoutes);
 
 const port = 8000;
 app.listen(port, () => {

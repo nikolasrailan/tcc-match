@@ -7,6 +7,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "id_usuario",
         as: "usuario",
       });
+      this.belongsToMany(models.AreaInteresse, {
+        through: "professor_areas",
+        foreignKey: "id_professor",
+        as: "areasDeInteresse",
+      });
     }
   }
   Professor.init(
