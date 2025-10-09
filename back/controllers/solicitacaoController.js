@@ -24,7 +24,7 @@ const solicitacaoController = {
       const solicitacaoPendenteAluno = await SolicitacaoOrientacao.findOne({
         where: {
           id_aluno: aluno.id_aluno,
-          status: 0, // Pendente
+          status: 0,
         },
       });
 
@@ -54,6 +54,12 @@ const solicitacaoController = {
         id_professor,
         id_ideia_tcc,
       });
+
+      const ideiaTcc = await IdeiaTcc.findByPk(id_ideia_tcc);
+      if (ideiaTcc) {
+        ideiaTcc.status = 1; // Muda para "Em Avaliação"
+        await ideiaTcc.save();
+      }
 
       res.status(201).json(novaSolicitacao);
     } catch (error) {
@@ -115,6 +121,7 @@ const solicitacaoController = {
 
       const solicitacao = await SolicitacaoOrientacao.findOne({
         where: { id_solicitacao: id, id_aluno: aluno.id_aluno },
+        include: ["ideiaTcc"],
       });
 
       if (!solicitacao) {
@@ -129,6 +136,11 @@ const solicitacaoController = {
 
       solicitacao.status = 3; // Cancelada
       await solicitacao.save();
+
+      if (solicitacao.ideiaTcc) {
+        solicitacao.ideiaTcc.status = 0;
+        await solicitacao.ideiaTcc.save();
+      }
 
       res.status(200).json({ message: "Solicitação cancelada com sucesso." });
     } catch (error) {
@@ -195,6 +207,7 @@ const solicitacaoController = {
 
       const solicitacao = await SolicitacaoOrientacao.findOne({
         where: { id_solicitacao: id, id_professor: professor.id_professor },
+        include: ["ideiaTcc"],
       });
 
       if (!solicitacao) {
@@ -209,6 +222,15 @@ const solicitacaoController = {
 
       solicitacao.status = aceito ? 1 : 2; // 1: Aceito, 2: Rejeitado
       await solicitacao.save();
+
+      if (solicitacao.ideiaTcc) {
+        if (aceito) {
+          solicitacao.ideiaTcc.status = 2;
+        } else {
+          solicitacao.ideiaTcc.status = 0;
+        }
+        await solicitacao.ideiaTcc.save();
+      }
 
       res.status(200).json({ message: "Solicitação respondida com sucesso." });
     } catch (error) {

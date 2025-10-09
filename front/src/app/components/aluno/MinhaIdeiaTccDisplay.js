@@ -14,12 +14,14 @@ export default function MinhaIdeiaTccDisplay({ ideiaTcc, onEdit, onDelete }) {
   const getStatusText = (status) => {
     switch (status) {
       case 0:
-        return "Submetido";
+        return "Pendente";
       case 1:
         return "Em avaliação";
       case 2:
         return "Aprovado";
       case 3:
+        return "Cancelado";
+      case 4:
         return "Rejeitado";
       default:
         return "Desconhecido";
