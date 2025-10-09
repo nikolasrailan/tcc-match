@@ -23,6 +23,10 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
       },
       disponibilidade: DataTypes.BOOLEAN,
+      limite_orientacoes: {
+        type: DataTypes.INTEGER,
+        defaultValue: 5,
+      },
       id_usuario: DataTypes.INTEGER,
     },
     {

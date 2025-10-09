@@ -54,6 +54,8 @@ export default function PerfilPage() {
               parsedUser.dadosProfessor?.areasDeInteresse?.map(
                 (a) => a.id_area
               ) || [],
+            limite_orientacoes:
+              parsedUser.dadosProfessor?.limite_orientacoes || 5,
           };
           setFormData(initialFormData);
 
@@ -108,6 +110,7 @@ export default function PerfilPage() {
       dataToUpdate.disponibilidade =
         formData.disponibilidade === "disponivel" ? 1 : 0;
       dataToUpdate.areasDeInteresse = formData.areasDeInteresse;
+      dataToUpdate.limite_orientacoes = formData.limite_orientacoes;
     }
 
     const result = await updateUsuario(user.id_usuario, dataToUpdate);
@@ -229,6 +232,18 @@ export default function PerfilPage() {
                     <MenuItem value="disponivel">Disponível</MenuItem>
                     <MenuItem value="indisponivel">Indisponível</MenuItem>
                   </MuiSelect>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="limite_orientacoes">
+                    Limite de Orientandos
+                  </Label>
+                  <Input
+                    id="limite_orientacoes"
+                    name="limite_orientacoes"
+                    type="number"
+                    value={formData.limite_orientacoes || ""}
+                    onChange={handleChange}
+                  />
                 </div>
               </>
             )}

@@ -49,6 +49,7 @@ export default function ProfessoresPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Áreas de Interesse</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Vagas</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -73,6 +74,12 @@ export default function ProfessoresPage() {
                       </div>
                     </TableCell>
                     <TableCell>{prof.usuario.email}</TableCell>
+                    <TableCell>
+                      {prof.orientandos_atuais !== undefined &&
+                      prof.limite_orientacoes
+                        ? `${prof.orientandos_atuais} / ${prof.limite_orientacoes}`
+                        : "N/A"}
+                    </TableCell>
                     <TableCell>
                       {prof.disponibilidade ? (
                         <Badge>Disponível</Badge>

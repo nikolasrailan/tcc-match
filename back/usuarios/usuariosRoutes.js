@@ -25,7 +25,7 @@ router.get("/", authenticateToken, isAdmin, async (req, res) => {
             attributes: ["id_area", "nome"],
             through: { attributes: [] },
           },
-          attributes: ["id_professor", "disponibilidade"],
+          attributes: ["id_professor", "disponibilidade", "limite_orientacoes"],
         },
         {
           model: Aluno,
@@ -94,7 +94,7 @@ router.post(
 );
 
 // Rota de atualização consolidada para lidar com todos os tipos de perfil
-router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
+router.patch("/:id", authenticateToken, async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
@@ -107,7 +107,14 @@ router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
       id_curso,
       areasDeInteresse,
       disponibilidade,
+      limite_orientacoes,
     } = req.body;
+
+    // Apenas o próprio usuário ou um admin pode editar
+    if (req.user.id.toString() !== id && req.user.role !== "admin") {
+      await t.rollback();
+      return res.status(403).json({ message: "Acesso negado." });
+    }
 
     const usuario = await Usuario.findByPk(id, {
       include: ["dadosAluno", "dadosProfessor"],
@@ -153,6 +160,8 @@ router.patch("/:id", authenticateToken, isAdmin, async (req, res) => {
       const dadosProfessorParaAtualizar = {};
       if (disponibilidade !== undefined)
         dadosProfessorParaAtualizar.disponibilidade = disponibilidade;
+      if (limite_orientacoes !== undefined)
+        dadosProfessorParaAtualizar.limite_orientacoes = limite_orientacoes;
 
       if (Object.keys(dadosProfessorParaAtualizar).length > 0) {
         await usuario.dadosProfessor.update(dadosProfessorParaAtualizar, {

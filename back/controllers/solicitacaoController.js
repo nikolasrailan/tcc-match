@@ -4,6 +4,7 @@ const {
   Usuario,
   Professor,
   IdeiaTcc,
+  sequelize,
 } = require("../models");
 
 const solicitacaoController = {
@@ -24,7 +25,7 @@ const solicitacaoController = {
       const solicitacaoPendenteAluno = await SolicitacaoOrientacao.findOne({
         where: {
           id_aluno: aluno.id_aluno,
-          status: 0,
+          status: 0, // Pendente
         },
       });
 
@@ -54,12 +55,6 @@ const solicitacaoController = {
         id_professor,
         id_ideia_tcc,
       });
-
-      const ideiaTcc = await IdeiaTcc.findByPk(id_ideia_tcc);
-      if (ideiaTcc) {
-        ideiaTcc.status = 1; // Muda para "Em Avaliação"
-        await ideiaTcc.save();
-      }
 
       res.status(201).json(novaSolicitacao);
     } catch (error) {
@@ -121,7 +116,6 @@ const solicitacaoController = {
 
       const solicitacao = await SolicitacaoOrientacao.findOne({
         where: { id_solicitacao: id, id_aluno: aluno.id_aluno },
-        include: ["ideiaTcc"],
       });
 
       if (!solicitacao) {
@@ -136,11 +130,6 @@ const solicitacaoController = {
 
       solicitacao.status = 3; // Cancelada
       await solicitacao.save();
-
-      if (solicitacao.ideiaTcc) {
-        solicitacao.ideiaTcc.status = 0;
-        await solicitacao.ideiaTcc.save();
-      }
 
       res.status(200).json({ message: "Solicitação cancelada com sucesso." });
     } catch (error) {
@@ -205,9 +194,24 @@ const solicitacaoController = {
         return res.status(403).json({ error: "Acesso negado." });
       }
 
+      // Se estiver aceitando, verifica o limite
+      if (aceito) {
+        const orientandosAtuais = await SolicitacaoOrientacao.count({
+          where: {
+            id_professor: professor.id_professor,
+            status: 1, // 1 = Aceito
+          },
+        });
+
+        if (orientandosAtuais >= professor.limite_orientacoes) {
+          return res
+            .status(403)
+            .json({ error: "Limite de orientações atingido." });
+        }
+      }
+
       const solicitacao = await SolicitacaoOrientacao.findOne({
         where: { id_solicitacao: id, id_professor: professor.id_professor },
-        include: ["ideiaTcc"],
       });
 
       if (!solicitacao) {
@@ -222,15 +226,6 @@ const solicitacaoController = {
 
       solicitacao.status = aceito ? 1 : 2; // 1: Aceito, 2: Rejeitado
       await solicitacao.save();
-
-      if (solicitacao.ideiaTcc) {
-        if (aceito) {
-          solicitacao.ideiaTcc.status = 2;
-        } else {
-          solicitacao.ideiaTcc.status = 0;
-        }
-        await solicitacao.ideiaTcc.save();
-      }
 
       res.status(200).json({ message: "Solicitação respondida com sucesso." });
     } catch (error) {

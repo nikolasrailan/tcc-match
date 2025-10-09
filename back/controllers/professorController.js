@@ -1,9 +1,20 @@
-const { Professor, Usuario, AreaInteresse } = require("../models");
+const {
+  Professor,
+  Usuario,
+  AreaInteresse,
+  SolicitacaoOrientacao,
+  sequelize,
+} = require("../models");
 
 const professorController = {
   async criarProfessor(req, res) {
     try {
-      const { disponibilidade, id_usuario, areasDeInteresse } = req.body;
+      const {
+        disponibilidade,
+        id_usuario,
+        areasDeInteresse,
+        limite_orientacoes,
+      } = req.body;
 
       const usuarioExiste = await Usuario.findByPk(id_usuario);
       if (!usuarioExiste) {
@@ -22,6 +33,7 @@ const professorController = {
       const novoProfessor = await Professor.create({
         disponibilidade,
         id_usuario,
+        limite_orientacoes,
       });
 
       if (areasDeInteresse && areasDeInteresse.length > 0) {
@@ -149,6 +161,20 @@ const professorController = {
 
       const professores = await Professor.findAll({
         where,
+        attributes: {
+          include: [
+            [
+              sequelize.literal(`(
+                SELECT COUNT(*)
+                FROM solicitacao_orientacao AS so
+                WHERE
+                  so.id_professor = Professor.id_professor
+                  AND so.status = 1
+              )`),
+              "orientandos_atuais",
+            ],
+          ],
+        },
         include: [
           {
             model: Usuario,
