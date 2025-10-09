@@ -28,9 +28,6 @@ async function fetchApi(endpoint, options = {}) {
 
     // Handle cases with no content in response
     if (response.status === 204) {
-      if (contentType && contentType.includes("application/json")) {
-        return await response.json();
-      }
       return { success: true };
     }
 
@@ -40,7 +37,8 @@ async function fetchApi(endpoint, options = {}) {
     return { success: true };
   } catch (error) {
     console.error(`Erro na chamada da API para ${endpoint}:`, error.message);
-    return null;
+    // Lança o erro para que a camada de UI possa capturá-lo e exibir a mensagem.
+    throw error;
   }
 }
 
