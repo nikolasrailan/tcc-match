@@ -175,7 +175,7 @@ export default function ProfessorDashboardPage() {
                               handleResponder(sol.id_solicitacao, true)
                             }
                           >
-                            <Check className="h-4 w-4 mr-2" /> Aceitar
+                            Aceitar
                           </Button>
                           <Button
                             variant="destructive"
@@ -184,7 +184,7 @@ export default function ProfessorDashboardPage() {
                               handleResponder(sol.id_solicitacao, false)
                             }
                           >
-                            <X className="h-4 w-4 mr-2" /> Rejeitar
+                            Rejeitar
                           </Button>
                         </TableCell>
                       </TableRow>
