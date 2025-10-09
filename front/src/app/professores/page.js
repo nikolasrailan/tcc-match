@@ -81,7 +81,8 @@ export default function ProfessoresPage() {
                         : "N/A"}
                     </TableCell>
                     <TableCell>
-                      {prof.disponibilidade ? (
+                      {prof.disponibilidade &&
+                      prof.orientandos_atuais < prof.limite_orientacoes ? (
                         <Badge>Disponível</Badge>
                       ) : (
                         <Badge variant="destructive">Indisponível</Badge>

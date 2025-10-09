@@ -18,17 +18,19 @@ async function fetchApi(endpoint, options = {}) {
 
     const contentType = response.headers.get("content-type");
     if (!response.ok) {
-      let errorData = {};
+      let errorData = { message: response.statusText || "Erro na requisição" };
       if (contentType && contentType.includes("application/json")) {
-        errorData = await response.json();
+        const body = await response.json();
+        errorData.message = body.error || body.message || errorData.message;
       }
-      throw new Error(
-        errorData.message || response.statusText || "Erro na requisição"
-      );
+      throw new Error(errorData.message);
     }
 
     // Handle cases with no content in response
     if (response.status === 204) {
+      if (contentType && contentType.includes("application/json")) {
+        return await response.json();
+      }
       return { success: true };
     }
 
@@ -37,7 +39,7 @@ async function fetchApi(endpoint, options = {}) {
     }
     return { success: true };
   } catch (error) {
-    console.error(`Erro na chamada da API para ${endpoint}:`, error);
+    console.error(`Erro na chamada da API para ${endpoint}:`, error.message);
     return null;
   }
 }

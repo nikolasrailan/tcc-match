@@ -105,11 +105,16 @@ export default function ProfessorPainelPage() {
   }, [fetchSolicitacoes]);
 
   const handleResponder = async (id, aceito) => {
-    const result = await responderSolicitacao(id, aceito);
-    if (result) {
-      fetchSolicitacoes();
-    } else {
-      setError("Ocorreu um erro ao responder à solicitação.");
+    setError(null);
+    try {
+      const result = await responderSolicitacao(id, aceito);
+      if (result) {
+        fetchSolicitacoes();
+      } else {
+        setError("Ocorreu um erro ao responder à solicitação.");
+      }
+    } catch (err) {
+      setError(err.message);
     }
   };
 
