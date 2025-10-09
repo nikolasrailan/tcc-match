@@ -33,4 +33,10 @@ router.get(
   professorController.listarProfessoresPublic
 );
 
+router.get(
+  "/dashboard",
+  authenticateToken,
+  professorController.getDashboardData
+);
+
 module.exports = router;

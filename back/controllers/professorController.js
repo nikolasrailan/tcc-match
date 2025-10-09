@@ -201,6 +201,74 @@ const professorController = {
         .json({ error: "Ocorreu um erro ao processar a requisição." });
     }
   },
+
+  async getDashboardData(req, res) {
+    try {
+      const idUsuario = req.user.id;
+      const professor = await Professor.findOne({
+        where: { id_usuario: idUsuario },
+      });
+
+      if (!professor) {
+        return res.status(403).json({ error: "Usuário não é um professor." });
+      }
+
+      const solicitacoesPendentes = await SolicitacaoOrientacao.findAll({
+        where: { id_professor: professor.id_professor, status: 0 },
+        include: [
+          {
+            model: Aluno,
+            as: "aluno",
+            include: {
+              model: Usuario,
+              as: "dadosUsuario",
+              attributes: ["nome", "email"],
+            },
+          },
+          { model: IdeiaTcc, as: "ideiaTcc" },
+        ],
+        order: [["data_solicitacao", "DESC"]],
+      });
+
+      const orientandosAtuais = await SolicitacaoOrientacao.findAll({
+        where: { id_professor: professor.id_professor, status: 1 },
+        include: [
+          {
+            model: Aluno,
+            as: "aluno",
+            include: [
+              {
+                model: Usuario,
+                as: "dadosUsuario",
+                attributes: ["nome", "email"],
+              },
+              { model: Curso, as: "cursoInfo" },
+            ],
+          },
+          { model: IdeiaTcc, as: "ideiaTcc" },
+        ],
+        order: [["data_solicitacao", "DESC"]],
+      });
+
+      const vagasDisponiveis =
+        professor.limite_orientacoes - orientandosAtuais.length;
+
+      const stats = {
+        pendentes: solicitacoesPendentes.length,
+        orientandos: orientandosAtuais.length,
+        vagas: vagasDisponiveis < 0 ? 0 : vagasDisponiveis,
+      };
+
+      res.status(200).json({
+        stats,
+        solicitacoesPendentes,
+        orientandosAtuais,
+      });
+    } catch (error) {
+      console.error("Erro ao buscar dados do dashboard do professor:", error);
+      res.status(500).json({ error: "Ocorreu um erro ao buscar os dados." });
+    }
+  },
 };
 
 module.exports = professorController;

@@ -1,115 +1,70 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { getProfessorDashboard, responderSolicitacao } from "@/api/apiService";
+import { Button } from "@/components/ui/button";
 import {
-  getSolicitacoesProfessor,
-  responderSolicitacao,
-} from "@/api/apiService";
-import {
-  Box,
-  CircularProgress,
-  Typography,
   Card,
   CardContent,
-  CardActions,
-  Button,
-  Grid,
-  Chip,
-  Alert,
-} from "@mui/material";
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Users,
+  BookOpenCheck,
+  MailQuestion,
+  Check,
+  X,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 
-const SolicitacaoCard = ({ solicitacao, onResponder }) => {
-  const getStatusChip = (status) => {
-    switch (status) {
-      case 0:
-        return <Chip label="Pendente" color="warning" />;
-      case 1:
-        return <Chip label="Aceito" color="success" />;
-      case 2:
-        return <Chip label="Rejeitado" color="error" />;
-      case 3:
-        return <Chip label="Cancelada" />;
-      default:
-        return <Chip label="Desconhecido" />;
-    }
-  };
-
-  return (
-    <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Typography variant="h6" gutterBottom>
-          {solicitacao.ideiaTcc.titulo}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {solicitacao.ideiaTcc.descricao}
-        </Typography>
-        <Typography variant="caption" display="block">
-          Aluno: {solicitacao.aluno?.dadosUsuario?.nome || "Não informado"}
-        </Typography>
-        <Typography variant="caption" display="block">
-          Email: {solicitacao.aluno?.dadosUsuario?.email || "Não informado"}
-        </Typography>
-        <Box sx={{ mt: 2 }}>{getStatusChip(solicitacao.status)}</Box>
-      </CardContent>
-      <CardActions>
-        {solicitacao.status === 0 && (
-          <>
-            <Button
-              size="small"
-              color="success"
-              onClick={() => onResponder(solicitacao.id_solicitacao, true)}
-            >
-              Aprovar
-            </Button>
-            <Button
-              size="small"
-              color="error"
-              onClick={() => onResponder(solicitacao.id_solicitacao, false)}
-            >
-              Rejeitar
-            </Button>
-          </>
-        )}
-      </CardActions>
-    </Card>
-  );
-};
-
-export default function ProfessorPainelPage() {
+export default function ProfessorDashboardPage() {
   useAuthRedirect();
-  const [solicitacoes, setSolicitacoes] = useState([]);
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchSolicitacoes = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSolicitacoesProfessor();
-      if (data && Array.isArray(data)) {
-        setSolicitacoes(data);
-      } else if (data === null) {
+      const data = await getProfessorDashboard();
+      if (data) {
+        setDashboardData(data);
+      } else {
         setError(
-          "Não foi possível carregar as solicitações. Você tem permissão para ver esta página?"
+          "Não foi possível carregar os dados. Verifique se você tem permissão para aceder a esta página."
         );
       }
     } catch (e) {
-      setError("Ocorreu um erro de rede.");
+      setError(e.message || "Ocorreu um erro de rede.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchSolicitacoes();
-  }, [fetchSolicitacoes]);
+    fetchData();
+  }, [fetchData]);
 
   const handleResponder = async (id, aceito) => {
     setError(null);
     try {
       const result = await responderSolicitacao(id, aceito);
       if (result) {
-        fetchSolicitacoes();
+        fetchData(); // Recarrega os dados após a resposta
       } else {
         setError("Ocorreu um erro ao responder à solicitação.");
       }
@@ -120,42 +75,179 @@ export default function ProfessorPainelPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: "1200px", margin: "auto" }}>
-      <Typography variant="h4" gutterBottom>
-        Painel do Professor - Solicitações de Orientação
-      </Typography>
+    <div className="container mx-auto py-8 space-y-8">
+      <h1 className="text-3xl font-bold">Dashboard do Professor</h1>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      {solicitacoes.length > 0 ? (
-        <Grid container spacing={3}>
-          {solicitacoes.map((solicitacao) => (
-            <Grid item xs={12} sm={6} md={4} key={solicitacao.id_solicitacao}>
-              <SolicitacaoCard
-                solicitacao={solicitacao}
-                onResponder={handleResponder}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      ) : (
-        !error && (
-          <Typography sx={{ textAlign: "center", mt: 2 }}>
-            Nenhuma solicitação de orientação foi recebida ainda.
-          </Typography>
-        )
+      {dashboardData && (
+        <>
+          {/* STATS CARDS */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Orientações Atuais
+                </CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {dashboardData.stats.orientandos}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Vagas Disponíveis
+                </CardTitle>
+                <BookOpenCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {dashboardData.stats.vagas}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Solicitações Pendentes
+                </CardTitle>
+                <MailQuestion className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {dashboardData.stats.pendentes}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* PENDING REQUESTS */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Solicitações Pendentes</CardTitle>
+              <CardDescription>
+                Avalie as propostas de TCC enviadas pelos alunos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aluno</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Proposta de TCC</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dashboardData.solicitacoesPendentes.length > 0 ? (
+                    dashboardData.solicitacoesPendentes.map((sol) => (
+                      <TableRow key={sol.id_solicitacao}>
+                        <TableCell className="font-medium">
+                          {sol.aluno?.dadosUsuario?.nome || "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {sol.aluno?.dadosUsuario?.email || "N/A"}
+                        </TableCell>
+                        <TableCell>{sol.ideiaTcc?.titulo || "N/A"}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleResponder(sol.id_solicitacao, true)
+                            }
+                          >
+                            <Check className="h-4 w-4 mr-2" /> Aceitar
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() =>
+                              handleResponder(sol.id_solicitacao, false)
+                            }
+                          >
+                            <X className="h-4 w-4 mr-2" /> Rejeitar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center">
+                        Nenhuma solicitação pendente.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* CURRENT ADVISEES */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Meus Orientandos</CardTitle>
+              <CardDescription>
+                Lista de alunos que você está a orientar atualmente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aluno</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Curso</TableHead>
+                    <TableHead>Título do TCC</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dashboardData.orientandosAtuais.length > 0 ? (
+                    dashboardData.orientandosAtuais.map((sol) => (
+                      <TableRow key={sol.id_solicitacao}>
+                        <TableCell className="font-medium">
+                          {sol.aluno?.dadosUsuario?.nome || "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {sol.aluno?.dadosUsuario?.email || "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {sol.aluno?.cursoInfo?.nome || "N/A"}
+                        </TableCell>
+                        <TableCell>{sol.ideiaTcc?.titulo || "N/A"}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center">
+                        Você ainda não está a orientar nenhum aluno.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
-    </Box>
+    </div>
   );
 }

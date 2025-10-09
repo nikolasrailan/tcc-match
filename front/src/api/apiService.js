@@ -103,6 +103,9 @@ export const getProfessores = (apenasDisponiveis = false) => {
   return fetchApi(endpoint);
 };
 
+// --- Professor Dashboard ---
+export const getProfessorDashboard = () => fetchApi("/professores/dashboard");
+
 // --- Funções de Solicitação ---
 export const enviarSolicitacao = (dados) =>
   fetchApi("/solicitacoes", {
