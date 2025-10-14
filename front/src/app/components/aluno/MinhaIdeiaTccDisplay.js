@@ -9,22 +9,23 @@ import {
   CardActions,
   Grid,
 } from "@mui/material";
+import { Badge } from "@/components/ui/badge";
 
 export default function MinhaIdeiaTccDisplay({ ideiaTcc, onEdit, onDelete }) {
   const getStatusText = (status) => {
     switch (status) {
       case 0:
-        return "Pendente";
+        return <Badge variant="secondary">Pendente</Badge>;
       case 1:
-        return "Em avaliação";
+        return <Badge>Em avaliação</Badge>;
       case 2:
-        return "Aprovado";
+        return <Badge>Aprovado</Badge>;
       case 3:
-        return "Cancelado";
+        return <Badge variant="outline">Cancelado</Badge>;
       case 4:
-        return "Rejeitado";
+        return <Badge variant="destructive">Rejeitado</Badge>;
       default:
-        return "Desconhecido";
+        return <Badge variant="outline">Desconhecido</Badge>;
     }
   };
 
@@ -38,6 +39,27 @@ export default function MinhaIdeiaTccDisplay({ ideiaTcc, onEdit, onDelete }) {
           <Grid item xs={12}>
             <Typography variant="body1">{ideiaTcc.descricao}</Typography>
           </Grid>
+
+          <Grid item xs={12}>
+            <Typography variant="caption" display="block">
+              Áreas de Interesse
+            </Typography>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+              {ideiaTcc.areasDeInteresse &&
+              ideiaTcc.areasDeInteresse.length > 0 ? (
+                ideiaTcc.areasDeInteresse.map((area) => (
+                  <Badge key={area.id_area} variant="secondary">
+                    {area.nome}
+                  </Badge>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Nenhuma área selecionada.
+                </Typography>
+              )}
+            </Box>
+          </Grid>
+
           <Grid item xs={6}>
             <Typography variant="caption">Data de Submissão</Typography>
             <Typography>
@@ -46,7 +68,9 @@ export default function MinhaIdeiaTccDisplay({ ideiaTcc, onEdit, onDelete }) {
           </Grid>
           <Grid item xs={6}>
             <Typography variant="caption">Status</Typography>
-            <Typography>{getStatusText(ideiaTcc.status)}</Typography>
+            <Typography component="div">
+              {getStatusText(ideiaTcc.status)}
+            </Typography>
           </Grid>
         </Grid>
       </CardContent>

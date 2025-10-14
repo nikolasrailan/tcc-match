@@ -6,6 +6,7 @@ import {
   criarIdeiaTcc,
   deletarIdeiaTcc,
   atualizarIdeiaTcc,
+  getAreasInteresse, // Importar a função
 } from "@/api/apiService";
 import IdeiaTccForm from "@/app/components/aluno/ideiaTccForm";
 import MinhaIdeiaTccDisplay from "@/app/components/aluno/MinhaIdeiaTccDisplay";
@@ -25,28 +26,46 @@ export default function AlunoPage() {
   const [loading, setLoading] = useState(true);
   const [editingIdeia, setEditingIdeia] = useState(null);
   const [error, setError] = useState(null);
+  const [allAreas, setAllAreas] = useState([]); // Estado para as áreas
 
-  const fetchIdeiasTcc = useCallback(async () => {
+  const fetchInitialData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const data = await getMinhaIdeiaTcc();
-    if (data && Array.isArray(data)) {
-      setIdeiasTcc(data);
-    } else if (data === null) {
-      setError("Você precisa ter um perfil de aluno para acessar esta página.");
+    try {
+      const [ideiasData, areasData] = await Promise.all([
+        getMinhaIdeiaTcc(),
+        getAreasInteresse(),
+      ]);
+
+      if (ideiasData) {
+        if (Array.isArray(ideiasData)) {
+          setIdeiasTcc(ideiasData);
+        } else if (ideiasData === null) {
+          setError(
+            "Você precisa ter um perfil de aluno para acessar esta página."
+          );
+        }
+      }
+
+      if (areasData) {
+        setAllAreas(areasData);
+      }
+    } catch (e) {
+      setError(e.message || "Falha ao carregar dados.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchIdeiasTcc();
-  }, [fetchIdeiasTcc]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   const handleCreate = async (formData) => {
     const novaIdeia = await criarIdeiaTcc(formData);
     if (novaIdeia) {
       alert("Ideia de TCC criada com sucesso!");
-      fetchIdeiasTcc();
+      fetchInitialData();
     }
   };
 
@@ -59,7 +78,7 @@ export default function AlunoPage() {
     if (ideiaAtualizada) {
       alert("Ideia de TCC atualizada com sucesso!");
       setEditingIdeia(null);
-      fetchIdeiasTcc();
+      fetchInitialData();
     }
   };
 
@@ -69,7 +88,7 @@ export default function AlunoPage() {
       const result = await deletarIdeiaTcc(ideiaId);
       if (result) {
         alert("Ideia de TCC excluída com sucesso!");
-        fetchIdeiasTcc();
+        fetchInitialData();
       }
     }
   };
@@ -112,6 +131,7 @@ export default function AlunoPage() {
             initialData={editingIdeia}
             onCancel={editingIdeia ? handleCancelEdit : null}
             key={editingIdeia ? editingIdeia.id_ideia_tcc : "new"}
+            allAreas={allAreas} // Passar as áreas para o formulário
           />
 
           <Divider sx={{ my: 4 }}>

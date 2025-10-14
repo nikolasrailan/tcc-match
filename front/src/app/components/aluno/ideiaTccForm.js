@@ -7,20 +7,30 @@ import {
   Card,
   CardContent,
   Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  OutlinedInput,
 } from "@mui/material";
 
-export default function ideiaTccForm({
+export default function IdeiaTccForm({
   onSubmit,
   initialData = null,
   onCancel = null,
+  allAreas = [],
 }) {
   const [formData, setFormData] = useState({
     titulo: initialData?.titulo || "",
     descricao: initialData?.descricao || "",
+    areasDeInteresse:
+      initialData?.areasDeInteresse?.map((a) => a.id_area) || [],
   });
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
@@ -59,6 +69,35 @@ export default function ideiaTccForm({
             rows={4}
             inputProps={{ maxLength: 255 }}
           />
+
+          <FormControl fullWidth>
+            <InputLabel id="areas-interesse-label">
+              Áreas de Interesse
+            </InputLabel>
+            <Select
+              labelId="areas-interesse-label"
+              name="areasDeInteresse"
+              multiple
+              value={formData.areasDeInteresse}
+              onChange={handleChange}
+              input={<OutlinedInput label="Áreas de Interesse" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                  {selected.map((value) => {
+                    const area = allAreas.find((a) => a.id_area === value);
+                    return <Chip key={value} label={area ? area.nome : ""} />;
+                  })}
+                </Box>
+              )}
+            >
+              {allAreas.map((area) => (
+                <MenuItem key={area.id_area} value={area.id_area}>
+                  {area.nome}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           <Box
             sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 2 }}
           >
