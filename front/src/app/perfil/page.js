@@ -2,7 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-import { updateUsuario, getAreasInteresse } from "@/api/apiService";
+import {
+  updateUsuario,
+  getAreasInteresse,
+  sugerirAreaInteresse,
+} from "@/api/apiService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,7 +27,10 @@ import {
   OutlinedInput,
   Select as MuiSelect,
   Typography,
+  TextField,
+  Button as MuiButton,
 } from "@mui/material";
+import { Loader2 } from "lucide-react";
 
 export default function PerfilPage() {
   useAuthRedirect();
@@ -33,6 +40,9 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const [isSuggestingArea, setIsSuggestingArea] = useState(false);
+  const [novaSugestao, setNovaSugestao] = useState("");
 
   const fetchInitialData = useCallback(async () => {
     if (typeof window !== "undefined") {
@@ -113,20 +123,49 @@ export default function PerfilPage() {
       dataToUpdate.limite_orientacoes = formData.limite_orientacoes;
     }
 
-    const result = await updateUsuario(user.id_usuario, dataToUpdate);
-    setLoading(false);
+    try {
+      const result = await updateUsuario(user.id_usuario, dataToUpdate);
+      if (result && result.user) {
+        setSuccess("Perfil atualizado com sucesso!");
+        localStorage.setItem("user", JSON.stringify(result.user));
+        setUser(result.user);
+      } else {
+        throw new Error("Ocorreu um erro ao atualizar o perfil.");
+      }
+    } catch (err) {
+      setError(err.message || "Ocorreu um erro ao atualizar o perfil.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    if (result && result.user) {
-      setSuccess("Perfil atualizado com sucesso!");
-      localStorage.setItem("user", JSON.stringify(result.user));
-      setUser(result.user);
-    } else {
-      setError("Ocorreu um erro ao atualizar o perfil.");
+  const handleSugestaoSubmit = async (e) => {
+    e.preventDefault();
+    if (!novaSugestao.trim()) {
+      setError("O nome da área não pode ser vazio.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await sugerirAreaInteresse({ nome: novaSugestao });
+      setSuccess("Sugestão enviada para aprovação do administrador!");
+      setIsSuggestingArea(false);
+      setNovaSugestao("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   if (!user) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -218,6 +257,51 @@ export default function PerfilPage() {
                       ))}
                     </MuiSelect>
                   </FormControl>
+                  <span
+                    onClick={() => setIsSuggestingArea(!isSuggestingArea)}
+                    style={{
+                      fontSize: "0.8rem",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                      color: "gray",
+                      marginTop: "4px",
+                      display: "inline-block",
+                    }}
+                  >
+                    {isSuggestingArea
+                      ? "Cancelar"
+                      : "Não encontrou uma área? Sugira uma nova."}
+                  </span>
+
+                  {isSuggestingArea && (
+                    <Box
+                      sx={{
+                        pt: 1,
+                        display: "flex",
+                        gap: 1,
+                        alignItems: "center",
+                      }}
+                    >
+                      <TextField
+                        id="sugestao-area"
+                        label="Nova área de interesse"
+                        variant="outlined"
+                        size="small"
+                        value={novaSugestao}
+                        onChange={(e) => setNovaSugestao(e.target.value)}
+                        required
+                        fullWidth
+                      />
+                      <Button
+                        onClick={handleSugestaoSubmit}
+                        variant="contained"
+                        size="small"
+                        disabled={loading}
+                      >
+                        Enviar
+                      </Button>
+                    </Box>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Disponibilidade</Label>
