@@ -1,9 +1,16 @@
-const { IdeiaTcc, Aluno, Usuario } = require("../models");
+const {
+  IdeiaTcc,
+  Aluno,
+  Usuario,
+  AreaInteresse,
+  sequelize,
+} = require("../models");
 
 const ideiaTccController = {
   async criarIdeiaTcc(req, res) {
+    const t = await sequelize.transaction();
     try {
-      const { titulo, descricao } = req.body;
+      const { titulo, descricao, areasDeInteresse } = req.body;
       const idUsuario = req.user.id;
 
       const aluno = await Aluno.findOne({ where: { id_usuario: idUsuario } });
@@ -13,16 +20,32 @@ const ideiaTccController = {
           .json({ error: "Apenas alunos podem criar propostas." });
       }
 
-      const novaIdeia = await IdeiaTcc.create({
-        titulo,
-        descricao,
-        id_aluno: aluno.id_aluno,
-        data_submissao: new Date(),
-        status: 0,
+      const novaIdeia = await IdeiaTcc.create(
+        {
+          titulo,
+          descricao,
+          id_aluno: aluno.id_aluno,
+          data_submissao: new Date(),
+          status: 0,
+        },
+        { transaction: t }
+      );
+
+      if (areasDeInteresse && areasDeInteresse.length > 0) {
+        await novaIdeia.setAreasDeInteresse(areasDeInteresse, {
+          transaction: t,
+        });
+      }
+
+      await t.commit();
+
+      const ideiaCompleta = await IdeiaTcc.findByPk(novaIdeia.id_ideia_tcc, {
+        include: ["areasDeInteresse"],
       });
 
-      res.status(201).json(novaIdeia);
+      res.status(201).json(ideiaCompleta);
     } catch (error) {
+      await t.rollback();
       console.error("Erro ao criar ideia de TCC:", error);
       res
         .status(500)
@@ -43,6 +66,14 @@ const ideiaTccController = {
 
       const ideiasTcc = await IdeiaTcc.findAll({
         where: { id_aluno: aluno.id_aluno },
+        include: [
+          {
+            model: AreaInteresse,
+            as: "areasDeInteresse",
+            attributes: ["id_area", "nome"],
+            through: { attributes: [] },
+          },
+        ],
         order: [["data_submissao", "DESC"]],
       });
 
@@ -61,15 +92,23 @@ const ideiaTccController = {
       }
 
       const ideias = await IdeiaTcc.findAll({
-        include: {
-          model: Aluno,
-          as: "aluno",
-          include: {
-            model: Usuario,
-            as: "dadosUsuario",
-            attributes: ["nome", "email"],
+        include: [
+          {
+            model: Aluno,
+            as: "aluno",
+            include: {
+              model: Usuario,
+              as: "dadosUsuario",
+              attributes: ["nome", "email"],
+            },
           },
-        },
+          {
+            model: AreaInteresse,
+            as: "areasDeInteresse",
+            attributes: ["id_area", "nome"],
+            through: { attributes: [] },
+          },
+        ],
         order: [["data_submissao", "DESC"]],
       });
 
@@ -81,9 +120,10 @@ const ideiaTccController = {
   },
 
   async atualizarIdeiaTcc(req, res) {
+    const t = await sequelize.transaction();
     try {
       const { id: idIdeia } = req.params;
-      const { titulo, descricao } = req.body;
+      const { titulo, descricao, areasDeInteresse } = req.body;
       const idUsuario = req.user.id;
 
       const aluno = await Aluno.findOne({ where: { id_usuario: idUsuario } });
@@ -104,9 +144,23 @@ const ideiaTccController = {
         });
       }
 
-      await ideiaTcc.update({ titulo, descricao });
-      res.status(200).json(ideiaTcc);
+      await ideiaTcc.update({ titulo, descricao }, { transaction: t });
+
+      if (areasDeInteresse) {
+        await ideiaTcc.setAreasDeInteresse(areasDeInteresse, {
+          transaction: t,
+        });
+      }
+
+      await t.commit();
+
+      const ideiaCompleta = await IdeiaTcc.findByPk(ideiaTcc.id_ideia_tcc, {
+        include: ["areasDeInteresse"],
+      });
+
+      res.status(200).json(ideiaCompleta);
     } catch (error) {
+      await t.rollback();
       console.error("Erro ao atualizar ideia de TCC:", error);
       res.status(500).json({ error: "Erro ao atualizar ideia de TCC." });
     }

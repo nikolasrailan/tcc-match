@@ -9,6 +9,11 @@ module.exports = (sequelize, DataTypes) => {
         as: "professores",
         timestamps: false,
       });
+      this.belongsToMany(models.IdeiaTcc, {
+        through: "ideia_tcc_areas",
+        foreignKey: "id_area",
+        as: "ideiasTcc",
+      });
     }
   }
   AreaInteresse.init(
