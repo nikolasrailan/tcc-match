@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -24,17 +25,78 @@ import {
   Users,
   BookOpenCheck,
   MailQuestion,
-  Check,
-  X,
   AlertCircle,
   Loader2,
 } from "lucide-react";
+
+import { Label } from "@/components/ui/label";
+const SolicitacaoModal = ({ open, onClose, solicitacao, onResponder }) => {
+  if (!open || !solicitacao) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div className="fixed inset-0" onClick={onClose} />
+      <Card className="z-10 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Detalhes da Solicitação</CardTitle>
+          <CardDescription>
+            De: {solicitacao.aluno?.dadosUsuario?.nome || "N/A"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-sm font-semibold">Título da Proposta</Label>
+            <p className="text-sm">{solicitacao.ideiaTcc?.titulo || "N/A"}</p>
+          </div>
+          <div>
+            <Label className="text-sm font-semibold">Descrição</Label>
+            <p className="text-sm">
+              {solicitacao.ideiaTcc?.descricao || "N/A"}
+            </p>
+          </div>
+          <div>
+            <Label className="text-sm font-semibold">Áreas de Interesse</Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {solicitacao.ideiaTcc?.areasDeInteresse?.length > 0 ? (
+                solicitacao.ideiaTcc.areasDeInteresse.map((area) => (
+                  <Badge key={area.id_area} variant="secondary">
+                    {area.nome}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma área especificada.
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => onResponder(solicitacao.id_solicitacao, false)}
+          >
+            Rejeitar
+          </Button>
+          <Button onClick={() => onResponder(solicitacao.id_solicitacao, true)}>
+            Aceitar
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+};
 
 export default function ProfessorDashboardPage() {
   useAuthRedirect();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedSolicitacao, setSelectedSolicitacao] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -59,12 +121,23 @@ export default function ProfessorDashboardPage() {
     fetchData();
   }, [fetchData]);
 
+  const handleOpenModal = (solicitacao) => {
+    setSelectedSolicitacao(solicitacao);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedSolicitacao(null);
+    setModalOpen(false);
+  };
+
   const handleResponder = async (id, aceito) => {
     setError(null);
     try {
       const result = await responderSolicitacao(id, aceito);
       if (result) {
-        fetchData(); // Recarrega os dados após a resposta
+        handleCloseModal();
+        fetchData();
       } else {
         setError("Ocorreu um erro ao responder à solicitação.");
       }
@@ -153,13 +226,16 @@ export default function ProfessorDashboardPage() {
                     <TableHead>Aluno</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Proposta de TCC</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {dashboardData.solicitacoesPendentes.length > 0 ? (
                     dashboardData.solicitacoesPendentes.map((sol) => (
-                      <TableRow key={sol.id_solicitacao}>
+                      <TableRow
+                        key={sol.id_solicitacao}
+                        onClick={() => handleOpenModal(sol)}
+                        className="cursor-pointer hover:bg-muted/50"
+                      >
                         <TableCell className="font-medium">
                           {sol.aluno?.dadosUsuario?.nome || "N/A"}
                         </TableCell>
@@ -167,31 +243,11 @@ export default function ProfessorDashboardPage() {
                           {sol.aluno?.dadosUsuario?.email || "N/A"}
                         </TableCell>
                         <TableCell>{sol.ideiaTcc?.titulo || "N/A"}</TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handleResponder(sol.id_solicitacao, true)
-                            }
-                          >
-                            Aceitar
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              handleResponder(sol.id_solicitacao, false)
-                            }
-                          >
-                            Rejeitar
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center">
+                      <TableCell colSpan={3} className="text-center">
                         Nenhuma solicitação pendente.
                       </TableCell>
                     </TableRow>
@@ -248,6 +304,13 @@ export default function ProfessorDashboardPage() {
           </Card>
         </>
       )}
+
+      <SolicitacaoModal
+        open={modalOpen}
+        onClose={handleCloseModal}
+        solicitacao={selectedSolicitacao}
+        onResponder={handleResponder}
+      />
     </div>
   );
 }

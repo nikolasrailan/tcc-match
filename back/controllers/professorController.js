@@ -34,7 +34,18 @@ const professorController = {
               attributes: ["nome", "email"],
             },
           },
-          { model: IdeiaTcc, as: "ideiaTcc" },
+          {
+            model: IdeiaTcc,
+            as: "ideiaTcc",
+            include: [
+              {
+                model: AreaInteresse,
+                as: "areasDeInteresse",
+                attributes: ["id_area", "nome"],
+                through: { attributes: [] },
+              },
+            ],
+          },
         ],
         order: [["data_solicitacao", "DESC"]],
       });
@@ -54,7 +65,18 @@ const professorController = {
               { model: Curso, as: "cursoInfo" },
             ],
           },
-          { model: IdeiaTcc, as: "ideiaTcc" },
+          {
+            model: IdeiaTcc,
+            as: "ideiaTcc",
+            include: [
+              {
+                model: AreaInteresse,
+                as: "areasDeInteresse",
+                attributes: ["id_area", "nome"],
+                through: { attributes: [] },
+              },
+            ],
+          },
         ],
         order: [["data_solicitacao", "DESC"]],
       });
