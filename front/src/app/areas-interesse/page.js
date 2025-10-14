@@ -6,43 +6,46 @@ import {
   criarAreaInteresse,
   deletarAreaInteresse,
   atualizarAreaInteresse,
+  getAreasInteressePendentes,
+  aprovarAreaInteresse,
+  rejeitarAreaInteresse,
 } from "@/api/apiService";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
+  TableHeader,
   TableRow,
-  Paper,
-  Typography,
-  Button,
-  Box,
-  CircularProgress,
-  Modal,
-  TextField,
-  Alert,
-} from "@mui/material";
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, AlertCircle } from "lucide-react";
 
-// Estilo para o Modal
-const styleModal = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 400,
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
+const Modal = ({ open, onClose, children }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div className="fixed inset-0" onClick={onClose} />
+      <Card className="z-10 w-full max-w-md">{children}</Card>
+    </div>
+  );
 };
 
 export default function AreasInteressePage() {
   useAuthRedirect();
   const [areas, setAreas] = useState([]);
+  const [areasPendentes, setAreasPendentes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -52,11 +55,19 @@ export default function AreasInteressePage() {
 
   const fetchAreas = useCallback(async () => {
     setLoading(true);
-    const data = await getAreasInteresse();
-    if (data) {
-      setAreas(data);
+    setError("");
+    try {
+      const [areasData, pendentesData] = await Promise.all([
+        getAreasInteresse(),
+        getAreasInteressePendentes(),
+      ]);
+      if (areasData) setAreas(areasData);
+      if (pendentesData) setAreasPendentes(pendentesData);
+    } catch (err) {
+      setError("Falha ao carregar dados.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -90,12 +101,12 @@ export default function AreasInteressePage() {
       setError("O nome da área não pode ser vazio.");
       return;
     }
-    const result = await criarAreaInteresse({ nome: novaAreaNome });
-    if (result) {
+    try {
+      await criarAreaInteresse({ nome: novaAreaNome });
       handleCloseModal();
       fetchAreas();
-    } else {
-      setError("Erro ao criar área. O nome pode já existir.");
+    } catch (err) {
+      setError(err.message || "Erro ao criar área.");
     }
   };
 
@@ -105,124 +116,224 @@ export default function AreasInteressePage() {
       setError("O nome da área não pode ser vazio.");
       return;
     }
-    const result = await atualizarAreaInteresse(areaEmEdicao.id_area, {
-      nome: novaAreaNome,
-    });
-    if (result) {
+    try {
+      await atualizarAreaInteresse(areaEmEdicao.id_area, {
+        nome: novaAreaNome,
+      });
       handleCloseEditModal();
       fetchAreas();
-    } else {
-      setError("Erro ao atualizar área. O nome pode já existir.");
+    } catch (err) {
+      setError(err.message || "Erro ao atualizar área.");
     }
   };
 
   const handleDelete = async (areaId) => {
     if (window.confirm("Tem certeza que deseja deletar esta área?")) {
-      const result = await deletarAreaInteresse(areaId);
-      if (result) {
+      try {
+        await deletarAreaInteresse(areaId);
         fetchAreas();
-      } else {
-        alert("Erro ao deletar área.");
+      } catch (err) {
+        alert(err.message || "Erro ao deletar área.");
       }
     }
   };
 
-  if (loading && !areas.length) {
+  const handleAprovar = async (id) => {
+    try {
+      await aprovarAreaInteresse(id);
+      fetchAreas();
+    } catch (err) {
+      alert(err.message || "Erro ao aprovar área.");
+    }
+  };
+
+  const handleRejeitar = async (id) => {
+    if (
+      window.confirm(
+        "Tem certeza que deseja rejeitar esta sugestão? Ela será excluída permanentemente."
+      )
+    ) {
+      try {
+        await rejeitarAreaInteresse(id);
+        fetchAreas();
+      } catch (err) {
+        alert(err.message || "Erro ao rejeitar área.");
+      }
+    }
+  };
+
+  if (loading && !areas.length && !areasPendentes.length) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
   }
 
   return (
-    <Box
-      sx={{
-        p: 3,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <Typography variant="h4" gutterBottom>
-        Gerenciar Áreas de Interesse
-      </Typography>
-      <Button variant="contained" onClick={handleOpenModal} sx={{ mb: 3 }}>
-        Adicionar Nova Área
-      </Button>
+    <div className="container mx-auto space-y-8 py-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Gerenciar Áreas de Interesse</h1>
+        <Button onClick={handleOpenModal}>Adicionar Nova Área Aprovada</Button>
+      </div>
 
-      <TableContainer
-        component={Paper}
-        sx={{ maxWidth: "80%", margin: "auto" }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Nome da Área</TableCell>
-              <TableCell align="center">Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {areas.map((area) => (
-              <TableRow key={area.id_area}>
-                <TableCell>{area.id_area}</TableCell>
-                <TableCell>{area.nome}</TableCell>
-                <TableCell align="center">
-                  <Button
-                    size="small"
-                    onClick={() => handleOpenEditModal(area)}
-                    sx={{ mr: 1 }}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => handleDelete(area.id_area)}
-                  >
-                    Excluir
-                  </Button>
-                </TableCell>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sugestões Pendentes</CardTitle>
+          <CardDescription>
+            Aprove ou rejeite as novas áreas de interesse sugeridas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome Sugerido</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHeader>
+            <TableBody>
+              {areasPendentes.length > 0 ? (
+                areasPendentes.map((area) => (
+                  <TableRow key={area.id_area}>
+                    <TableCell className="font-medium">{area.nome}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAprovar(area.id_area)}
+                      >
+                        Aprovar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleRejeitar(area.id_area)}
+                      >
+                        Rejeitar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center">
+                    Nenhuma sugestão pendente.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Áreas Aprovadas</CardTitle>
+          <CardDescription>
+            Visualize e gerencie as áreas de interesse existentes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">ID</TableHead>
+                <TableHead>Nome da Área</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {areas.map((area) => (
+                <TableRow key={area.id_area}>
+                  <TableCell className="font-medium">{area.id_area}</TableCell>
+                  <TableCell>{area.nome}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenEditModal(area)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDelete(area.id_area)}
+                    >
+                      Excluir
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Box sx={styleModal} component="form" onSubmit={handleCreate}>
-          <Typography variant="h6">Criar Nova Área</Typography>
-          {error && <Alert severity="error">{error}</Alert>}
-          <TextField
-            label="Nome da Área"
-            value={novaAreaNome}
-            onChange={(e) => setNovaAreaNome(e.target.value)}
-            required
-            fullWidth
-          />
-          <Button type="submit" variant="contained">
-            Confirmar
-          </Button>
-        </Box>
+        <form onSubmit={handleCreate}>
+          <CardHeader>
+            <CardTitle>Criar Nova Área</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && <Alert variant="destructive">{error}</Alert>}
+            <div className="space-y-2">
+              <Label htmlFor="create-area">Nome da Área</Label>
+              <Input
+                id="create-area"
+                value={novaAreaNome}
+                onChange={(e) => setNovaAreaNome(e.target.value)}
+                required
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-end gap-2">
+            <Button variant="outline" type="button" onClick={handleCloseModal}>
+              Cancelar
+            </Button>
+            <Button type="submit">Confirmar</Button>
+          </CardFooter>
+        </form>
       </Modal>
 
       <Modal open={editModalOpen} onClose={handleCloseEditModal}>
-        <Box sx={styleModal} component="form" onSubmit={handleUpdate}>
-          <Typography variant="h6">Editar Área</Typography>
-          {error && <Alert severity="error">{error}</Alert>}
-          <TextField
-            label="Nome da Área"
-            value={novaAreaNome}
-            onChange={(e) => setNovaAreaNome(e.target.value)}
-            required
-            fullWidth
-          />
-          <Button type="submit" variant="contained">
-            Salvar Alterações
-          </Button>
-        </Box>
+        <form onSubmit={handleUpdate}>
+          <CardHeader>
+            <CardTitle>Editar Área</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && <Alert variant="destructive">{error}</Alert>}
+            <div className="space-y-2">
+              <Label htmlFor="edit-area">Nome da Área</Label>
+              <Input
+                id="edit-area"
+                value={novaAreaNome}
+                onChange={(e) => setNovaAreaNome(e.target.value)}
+                required
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={handleCloseEditModal}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit">Salvar Alterações</Button>
+          </CardFooter>
+        </form>
       </Modal>
-    </Box>
+    </div>
   );
 }

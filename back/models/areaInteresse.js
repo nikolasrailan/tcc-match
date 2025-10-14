@@ -19,6 +19,10 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
       },
       nome: DataTypes.STRING,
+      status: {
+        type: DataTypes.ENUM("aprovada", "pendente", "rejeitada"),
+        defaultValue: "pendente",
+      },
     },
     {
       sequelize,

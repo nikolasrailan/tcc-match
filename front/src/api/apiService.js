@@ -26,7 +26,6 @@ async function fetchApi(endpoint, options = {}) {
       throw new Error(errorData.message);
     }
 
-    // Handle cases with no content in response
     if (response.status === 204) {
       return { success: true };
     }
@@ -37,7 +36,6 @@ async function fetchApi(endpoint, options = {}) {
     return { success: true };
   } catch (error) {
     console.error(`Erro na chamada da API para ${endpoint}:`, error.message);
-    // Lança o erro para que a camada de UI possa capturá-lo e exibir a mensagem.
     throw error;
   }
 }
@@ -150,13 +148,32 @@ export const atualizarCurso = (id, dados) =>
     body: JSON.stringify(dados),
   });
 
-// --- NOVAS Funções de Áreas de Interesse ---
+// --- Funções de Áreas de Interesse ---
 export const getAreasInteresse = () => fetchApi("/areas-interesse");
 
 export const criarAreaInteresse = (dados) =>
   fetchApi("/areas-interesse", {
     method: "POST",
     body: JSON.stringify(dados),
+  });
+
+export const sugerirAreaInteresse = (dados) =>
+  fetchApi("/areas-interesse/sugerir", {
+    method: "POST",
+    body: JSON.stringify(dados),
+  });
+
+export const getAreasInteressePendentes = () =>
+  fetchApi("/areas-interesse/pendentes");
+
+export const aprovarAreaInteresse = (id) =>
+  fetchApi(`/areas-interesse/${id}/aprovar`, {
+    method: "PATCH",
+  });
+
+export const rejeitarAreaInteresse = (id) =>
+  fetchApi(`/areas-interesse/${id}/rejeitar`, {
+    method: "DELETE",
   });
 
 export const atualizarAreaInteresse = (id, dados) =>
