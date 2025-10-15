@@ -103,21 +103,25 @@ export default function SolicitarOrientacaoPage() {
       return;
     }
 
-    const result = await enviarSolicitacao({
-      id_professor: selectedProfessor,
-      id_ideia_tcc: selectedIdeia,
-    });
+    try {
+      const result = await enviarSolicitacao({
+        id_professor: selectedProfessor,
+        id_ideia_tcc: selectedIdeia,
+      });
 
-    setLoading(false);
-    if (result) {
-      setSuccess("Solicitação enviada com sucesso!");
-      fetchData(); // Re-fetch data to update the table
-      setSelectedIdeia("");
-      setSelectedProfessor("");
-    } else {
+      if (result) {
+        setSuccess("Solicitação enviada com sucesso!");
+        fetchData(); // Re-fetch data to update the table
+        setSelectedIdeia("");
+        setSelectedProfessor("");
+      }
+    } catch (err) {
       setError(
-        "Não foi possível enviar a solicitação. Verifique se já não existe uma solicitação para esta ideia ou alguma pendente."
+        err.message ||
+          "Não foi possível enviar a solicitação. Verifique se já não existe uma solicitação para esta ideia ou alguma pendente."
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -194,7 +198,7 @@ export default function SolicitarOrientacaoPage() {
                       key={prof.id_professor}
                       value={prof.id_professor.toString()}
                     >
-                      {prof.usuario.nome} - {prof.especializacao}
+                      {prof.usuario.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -274,9 +278,12 @@ export default function SolicitarOrientacaoPage() {
                     <TableCell>
                       {solicitacao.status === 0 && (
                         <a
-                          variant="link"
+                          href="#"
                           className="text-red-600 p-0 h-auto"
-                          onClick={() => handleOpenCancelModal(solicitacao)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleOpenCancelModal(solicitacao);
+                          }}
                           disabled={loading}
                         >
                           Cancelar
