@@ -66,6 +66,11 @@ export default function Navbar() {
             Painel Professor
           </Link>
         )}
+        {(user?.dadosAluno || user?.dadosProfessor) && (
+          <Link href="/orientacao" className={cn(navigationMenuTriggerStyle())}>
+            Orientação
+          </Link>
+        )}
         {!!user?.isAdmin && (
           <>
             <Link href="/usuarios" className={cn(navigationMenuTriggerStyle())}>

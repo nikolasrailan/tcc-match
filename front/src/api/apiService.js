@@ -40,6 +40,14 @@ async function fetchApi(endpoint, options = {}) {
   }
 }
 
+// --- Funções de Orientação ---
+export const getOrientacao = () => fetchApi("/orientacoes");
+export const updateOrientacao = (id, data) =>
+  fetchApi(`/orientacoes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+
 // --- Funções de Usuários ---
 export const getUsuarios = () => fetchApi("/usuarios");
 

@@ -11,6 +11,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "id_curso",
         as: "cursoInfo",
       });
+      Aluno.hasMany(models.Orientacao, {
+        foreignKey: "id_aluno",
+        as: "orientacoes",
+      });
     }
   }
   Aluno.init(

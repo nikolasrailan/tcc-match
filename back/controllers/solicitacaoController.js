@@ -4,6 +4,7 @@ const {
   Usuario,
   Professor,
   IdeiaTcc,
+  Orientacao,
   sequelize,
 } = require("../models");
 
@@ -182,6 +183,7 @@ const solicitacaoController = {
   },
 
   async responderSolicitacao(req, res) {
+    const t = await sequelize.transaction();
     try {
       const { id } = req.params;
       const { aceito } = req.body; // true para aceitar, false para rejeitar
@@ -191,23 +193,8 @@ const solicitacaoController = {
         where: { id_usuario: idUsuario },
       });
       if (!professor) {
+        await t.rollback();
         return res.status(403).json({ error: "Acesso negado." });
-      }
-
-      // Se estiver aceitando, verifica o limite
-      if (aceito) {
-        const orientandosAtuais = await SolicitacaoOrientacao.count({
-          where: {
-            id_professor: professor.id_professor,
-            status: 1, // 1 = Aceito
-          },
-        });
-
-        if (orientandosAtuais >= professor.limite_orientacoes) {
-          return res
-            .status(403)
-            .json({ error: "Limite de orientações atingido." });
-        }
       }
 
       const solicitacao = await SolicitacaoOrientacao.findOne({
@@ -215,20 +202,54 @@ const solicitacaoController = {
       });
 
       if (!solicitacao) {
+        await t.rollback();
         return res.status(404).json({ error: "Solicitação não encontrada." });
       }
 
       if (solicitacao.status !== 0) {
+        await t.rollback();
         return res
           .status(400)
           .json({ error: "Esta solicitação já foi respondida." });
       }
 
+      // Se estiver aceitando, verifica o limite
+      if (aceito) {
+        const orientandosAtuais = await Orientacao.count({
+          where: {
+            id_professor: professor.id_professor,
+            status: "em desenvolvimento",
+          },
+        });
+
+        if (orientandosAtuais >= professor.limite_orientacoes) {
+          await t.rollback();
+          return res
+            .status(403)
+            .json({ error: "Limite de orientações atingido." });
+        }
+
+        // Inicia a orientação
+        await Orientacao.create(
+          {
+            id_aluno: solicitacao.id_aluno,
+            id_professor: solicitacao.id_professor,
+            id_ideia_tcc: solicitacao.id_ideia_tcc,
+            data_inicio: new Date(),
+            status: "em desenvolvimento",
+          },
+          { transaction: t }
+        );
+      }
+
       solicitacao.status = aceito ? 1 : 2; // 1: Aceito, 2: Rejeitado
-      await solicitacao.save();
+      await solicitacao.save({ transaction: t });
+
+      await t.commit();
 
       res.status(200).json({ message: "Solicitação respondida com sucesso." });
     } catch (error) {
+      await t.rollback();
       console.error("Erro ao responder solicitação:", error);
       res
         .status(500)

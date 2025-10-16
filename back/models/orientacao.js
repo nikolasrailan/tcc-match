@@ -1,0 +1,65 @@
+"use strict";
+const { Model } = require("sequelize");
+module.exports = (sequelize, DataTypes) => {
+  class Orientacao extends Model {
+    static associate(models) {
+      this.belongsTo(models.Aluno, {
+        foreignKey: "id_aluno",
+        as: "aluno",
+      });
+      this.belongsTo(models.Professor, {
+        foreignKey: "id_professor",
+        as: "professor",
+      });
+      this.belongsTo(models.IdeiaTcc, {
+        foreignKey: "id_ideia_tcc",
+        as: "ideiaTcc",
+      });
+    }
+  }
+  Orientacao.init(
+    {
+      id_orientacao: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+        allowNull: false,
+      },
+      data_inicio: {
+        type: DataTypes.DATE,
+        allowNull: false,
+      },
+      data_fim: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      status: {
+        type: DataTypes.ENUM(
+          "em desenvolvimento",
+          "finalizado",
+          "cancelado",
+          "pausado"
+        ),
+        allowNull: false,
+        defaultValue: "em desenvolvimento",
+      },
+      url_projeto: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      observacoes: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      id_aluno: DataTypes.INTEGER,
+      id_professor: DataTypes.INTEGER,
+      id_ideia_tcc: DataTypes.INTEGER,
+    },
+    {
+      sequelize,
+      modelName: "Orientacao",
+      tableName: "orientacao",
+    }
+  );
+  return Orientacao;
+};
