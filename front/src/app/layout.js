@@ -1,5 +1,6 @@
 import Navbar from "./components/Navbar";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata = {
   title: "TCC Match",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }) {
       <body>
         <Navbar />
         <main className="p-4 sm:p-6 md:p-8">{children}</main>
+        <Toaster />
       </body>
     </html>
   );

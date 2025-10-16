@@ -12,6 +12,7 @@ import IdeiaTccForm from "@/app/components/aluno/ideiaTccForm";
 import MinhaIdeiaTccDisplay from "@/app/components/aluno/MinhaIdeiaTccDisplay";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AlunoPage() {
   useAuthRedirect();
@@ -57,7 +58,7 @@ export default function AlunoPage() {
   const handleCreate = async (formData) => {
     const novaIdeia = await criarIdeiaTcc(formData);
     if (novaIdeia) {
-      alert("Ideia de TCC criada com sucesso!");
+      toast.success("Ideia de TCC criada com sucesso!");
       fetchInitialData();
     }
   };
@@ -69,21 +70,28 @@ export default function AlunoPage() {
       formData
     );
     if (ideiaAtualizada) {
-      alert("Ideia de TCC atualizada com sucesso!");
+      toast.success("Ideia de TCC atualizada com sucesso!");
       setEditingIdeia(null);
       fetchInitialData();
     }
   };
 
   const handleDelete = async (ideiaId) => {
-    const confirmed = true;
-    if (confirmed) {
-      const result = await deletarIdeiaTcc(ideiaId);
-      if (result) {
-        alert("Ideia de TCC excluída com sucesso!");
-        fetchInitialData();
-      }
-    }
+    toast("Tem certeza que deseja excluir esta ideia?", {
+      action: {
+        label: "Excluir",
+        onClick: async () => {
+          const result = await deletarIdeiaTcc(ideiaId);
+          if (result) {
+            toast.success("Ideia de TCC excluída com sucesso!");
+            fetchInitialData();
+          }
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+      },
+    });
   };
 
   const handleStartEdit = (ideia) => {

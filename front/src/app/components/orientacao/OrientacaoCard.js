@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { getReunioes, criarReuniao, atualizarReuniao } from "@/api/apiService";
+import { getReunioes, atualizarReuniao } from "@/api/apiService";
 import {
   Card,
   CardContent,
@@ -14,16 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -32,92 +23,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar, PlusCircle, Trash2 } from "lucide-react";
-
-const ConfirmationDialog = ({
-  open,
-  onOpenChange,
-  title,
-  description,
-  onConfirm,
-}) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button type="button" variant="secondary">
-            Cancelar
-          </Button>
-        </DialogClose>
-        <Button onClick={onConfirm}>Confirmar</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
-
-const ReuniaoModal = ({ orientacaoId, onSave }) => {
-  const [dataHorario, setDataHorario] = useState("");
-  const [pauta, setPauta] = useState("");
-
-  const handleSubmit = async () => {
-    if (!dataHorario) {
-      alert("Por favor, selecione data e hora.");
-      return;
-    }
-    await criarReuniao(orientacaoId, {
-      data_horario: dataHorario,
-      pauta,
-    });
-    onSave();
-    setDataHorario("");
-    setPauta("");
-  };
-
-  return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Agendar Nova Reunião</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="data_horario">Data e Hora</Label>
-          <Input
-            id="data_horario"
-            type="datetime-local"
-            value={dataHorario}
-            onChange={(e) => setDataHorario(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="pauta">Pauta/Assunto</Label>
-          <Textarea
-            id="pauta"
-            value={pauta}
-            onChange={(e) => setPauta(e.target.value)}
-            placeholder="Tópicos a serem discutidos..."
-          />
-        </div>
-      </div>
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button type="button" variant="secondary">
-            Cancelar
-          </Button>
-        </DialogClose>
-        <Button onClick={handleSubmit}>Agendar</Button>
-      </DialogFooter>
-    </DialogContent>
-  );
-};
+import { PlusCircle, Edit, Check } from "lucide-react";
+import ConfirmationDialog from "../reuniao/ConfirmacaoDialog";
+import ReuniaoModal from "../reuniao/ReuniaoModal";
 
 const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [reunioes, setReunioes] = useState([]);
-  const [isReuniaoModalOpen, setIsReuniaoModalOpen] = useState(false);
+  const [reuniaoModalState, setReuniaoModalState] = useState({
+    open: false,
+    initialData: null,
+  });
   const [confirmationState, setConfirmationState] = useState({
     open: false,
     title: "",
@@ -150,6 +66,18 @@ const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
   const handleUpdate = () => {
     onUpdate(orientacao.id_orientacao, formData);
     setIsEditing(false);
+  };
+
+  const handleOpenCreateModal = () => {
+    setReuniaoModalState({ open: true, initialData: null });
+  };
+
+  const handleOpenEditModal = (reuniao) => {
+    setReuniaoModalState({ open: true, initialData: reuniao });
+  };
+
+  const handleCloseReuniaoModal = () => {
+    setReuniaoModalState({ open: false, initialData: null });
   };
 
   const handleReuniaoStatusChange = (reuniaoId, status) => {
@@ -288,26 +216,12 @@ const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
         )}
 
         <div className="space-y-2">
-          <Dialog
-            open={isReuniaoModalOpen}
-            onOpenChange={setIsReuniaoModalOpen}
-          >
-            <div className="flex justify-between items-center">
-              <Label className="text-lg font-semibold">Reuniões</Label>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Agendar Reunião
-                </Button>
-              </DialogTrigger>
-            </div>
-            <ReuniaoModal
-              orientacaoId={orientacao.id_orientacao}
-              onSave={() => {
-                fetchReunioes();
-                setIsReuniaoModalOpen(false);
-              }}
-            />
-          </Dialog>
+          <div className="flex justify-between items-center">
+            <Label className="text-lg font-semibold">Reuniões</Label>
+            <Button variant="outline" size="sm" onClick={handleOpenCreateModal}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Agendar Reunião
+            </Button>
+          </div>
 
           <div className="border rounded-lg">
             <Table>
@@ -335,7 +249,14 @@ const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
                           <>
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
+                              onClick={() => handleOpenEditModal(reuniao)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               onClick={() =>
                                 handleReuniaoStatusChange(
                                   reuniao.id_reuniao,
@@ -343,7 +264,7 @@ const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
                                 )
                               }
                             >
-                              Realizada
+                              <Check className="h-4 w-4 text-green-600" />
                             </Button>
                             <Button
                               size="sm"
@@ -401,6 +322,20 @@ const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
         description={confirmationState.description}
         onConfirm={confirmationState.onConfirm}
       />
+      <Dialog
+        open={reuniaoModalState.open}
+        onOpenChange={(isOpen) => !isOpen && handleCloseReuniaoModal()}
+      >
+        <ReuniaoModal
+          orientacaoId={orientacao.id_orientacao}
+          initialData={reuniaoModalState.initialData}
+          onSave={() => {
+            fetchReunioes();
+            handleCloseReuniaoModal();
+          }}
+          onClose={handleCloseReuniaoModal}
+        />
+      </Dialog>
     </Card>
   );
 };

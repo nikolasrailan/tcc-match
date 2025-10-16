@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 const Modal = ({ open, onClose, children }) => {
   if (!open) return null;
@@ -104,8 +105,10 @@ export default function AreasInteressePage() {
     try {
       await criarAreaInteresse({ nome: novaAreaNome });
       handleCloseModal();
+      toast.success("Área criada com sucesso!");
       fetchAreas();
     } catch (err) {
+      toast.error("Erro ao criar área.");
       setError(err.message || "Erro ao criar área.");
     }
   };
@@ -121,45 +124,64 @@ export default function AreasInteressePage() {
         nome: novaAreaNome,
       });
       handleCloseEditModal();
+      toast.success("Área atualizada com sucesso!");
       fetchAreas();
     } catch (err) {
       setError(err.message || "Erro ao atualizar área.");
+      toast.error("Erro ao atualizar área.");
     }
   };
 
   const handleDelete = async (areaId) => {
-    if (window.confirm("Tem certeza que deseja deletar esta área?")) {
-      try {
-        await deletarAreaInteresse(areaId);
-        fetchAreas();
-      } catch (err) {
-        alert(err.message || "Erro ao deletar área.");
-      }
-    }
+    toast("Tem certeza que deseja deletar esta área?", {
+      action: {
+        label: "Deletar",
+        onClick: async () => {
+          try {
+            await deletarAreaInteresse(areaId);
+            toast.success("Área deletada com sucesso!");
+            fetchAreas();
+          } catch (err) {
+            toast.error(err.message || "Erro ao deletar área.");
+          }
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+      },
+    });
   };
 
   const handleAprovar = async (id) => {
     try {
       await aprovarAreaInteresse(id);
+      toast.success("Área aprovada com sucesso!");
       fetchAreas();
     } catch (err) {
       alert(err.message || "Erro ao aprovar área.");
+      toast.error(err.message || "Erro ao aprovar área.");
     }
   };
 
   const handleRejeitar = async (id) => {
-    if (
-      window.confirm(
-        "Tem certeza que deseja rejeitar esta sugestão? Ela será excluída permanentemente."
-      )
-    ) {
-      try {
-        await rejeitarAreaInteresse(id);
-        fetchAreas();
-      } catch (err) {
-        alert(err.message || "Erro ao rejeitar área.");
-      }
-    }
+    toast("Tem certeza que deseja rejeitar esta sugestão?", {
+      description: "Ela será excluída permanentemente.",
+      action: {
+        label: "Rejeitar",
+        onClick: async () => {
+          try {
+            await rejeitarAreaInteresse(id);
+            toast.success("Sugestão rejeitada com sucesso.");
+            fetchAreas();
+          } catch (err) {
+            toast.error(err.message || "Erro ao rejeitar área.");
+          }
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+      },
+    });
   };
 
   if (loading && !areas.length && !areasPendentes.length) {
