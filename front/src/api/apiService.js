@@ -40,6 +40,20 @@ async function fetchApi(endpoint, options = {}) {
   }
 }
 
+// --- Funções de Reunião ---
+export const getReunioes = (id_orientacao) =>
+  fetchApi(`/reunioes/${id_orientacao}`);
+export const criarReuniao = (id_orientacao, data) =>
+  fetchApi(`/reunioes/${id_orientacao}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+export const atualizarReuniao = (id_reuniao, data) =>
+  fetchApi(`/reunioes/${id_reuniao}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+
 // --- Funções de Orientação ---
 export const getOrientacao = () => fetchApi("/orientacoes");
 export const updateOrientacao = (id, data) =>

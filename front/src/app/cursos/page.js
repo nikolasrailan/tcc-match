@@ -211,7 +211,7 @@ export default function CursosPage() {
                           <Input
                             id="nome-edit"
                             value={novoCursoNome}
-                            onChange={(e) => setNovaCursoNome(e.target.value)}
+                            onChange={(e) => setNovoCursoNome(e.target.value)}
                             required
                           />
                         </div>
