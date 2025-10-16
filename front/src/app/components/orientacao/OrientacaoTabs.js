@@ -12,12 +12,14 @@ const OrientacaoTabs = ({ orientacoes, selectedIndex, onSelect }) => {
       {orientacoes.map((orientacao, index) => (
         <Button
           key={orientacao.id_orientacao}
-          variant={selectedIndex === index ? "default" : "outline"}
+          variant={selectedIndex === index ? "secondary" : "ghost"}
           onClick={() => onSelect(index)}
           className="h-auto"
         >
-          <div className="flex flex-col items-start p-1">
-            <span>{orientacao.aluno.dadosUsuario.nome}</span>
+          <div className="flex flex-col items-start p-1 text-left">
+            <span className="font-medium">
+              {orientacao.aluno.dadosUsuario.nome}
+            </span>
             <span className="text-xs text-muted-foreground">
               {truncate(orientacao.ideiaTcc.titulo, 25)}
             </span>
