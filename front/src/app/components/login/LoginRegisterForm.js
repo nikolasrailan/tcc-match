@@ -1,13 +1,16 @@
 "use client";
 import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
-  Button,
   Card,
   CardContent,
-  TextField,
-  Typography,
-  Box,
-} from "@mui/material";
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function LoginRegisterForm({ onSubmit }) {
   const [formData, setFormData] = useState({ nome: "", email: "", senha: "" });
@@ -22,55 +25,51 @@ export default function LoginRegisterForm({ onSubmit }) {
   };
 
   return (
-    <Card sx={{ maxWidth: 400, margin: "auto", mt: 5, p: 2 }}>
-      <CardContent>
-        <Typography variant="h4" sx={{ mb: 2 }} align="center">
-          Registre-se
-        </Typography>
-        <Box
-          component="form"
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-          onSubmit={handleSubmit}
-        >
-          <TextField
-            id="nome"
-            label="Nome"
-            variant="outlined"
-            fullWidth
-            value={formData.nome}
-            onChange={handleChange}
-            required
-          />
-          <TextField
-            id="email"
-            label="Email"
-            type="email"
-            variant="outlined"
-            fullWidth
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-          <TextField
-            id="senha"
-            label="Senha"
-            type="password"
-            variant="outlined"
-            fullWidth
-            value={formData.senha}
-            onChange={handleChange}
-            required
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            size="large"
-          >
-            Criar Conta
-          </Button>
-        </Box>
-      </CardContent>
-    </Card>
+    <div className="flex justify-center items-center mt-10">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle>Registre-se</CardTitle>
+          <CardDescription>Crie uma nova conta para começar.</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome</Label>
+              <Input
+                id="nome"
+                value={formData.nome}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senha">Senha</Label>
+              <Input
+                id="senha"
+                type="password"
+                value={formData.senha}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full">
+              Criar Conta
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+    </div>
   );
 }

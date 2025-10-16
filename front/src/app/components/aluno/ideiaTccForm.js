@@ -1,19 +1,32 @@
 "use client";
 import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
-  TextField,
-  Button,
-  Box,
   Card,
   CardContent,
-  Typography,
-  FormControl,
-  InputLabel,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Select,
-  MenuItem,
-  Chip,
-  OutlinedInput,
-} from "@mui/material";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function IdeiaTccForm({
   onSubmit,
@@ -33,85 +46,104 @@ export default function IdeiaTccForm({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleAreaChange = (areaId) => {
+    setFormData((prev) => {
+      const newAreas = prev.areasDeInteresse.includes(areaId)
+        ? prev.areasDeInteresse.filter((id) => id !== areaId)
+        : [...prev.areasDeInteresse, areaId];
+      return { ...prev, areasDeInteresse: newAreas };
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
   };
 
+  const selectedAreaNames = formData.areasDeInteresse
+    .map((id) => allAreas.find((area) => area.id_area === id)?.nome)
+    .filter(Boolean);
+
   return (
     <Card>
-      <CardContent>
-        <Typography variant="h5" component="h2" gutterBottom>
+      <CardHeader>
+        <CardTitle>
           {initialData ? "Editar Ideia" : "Cadastrar Nova Ideia"}
-        </Typography>
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
-          <TextField
-            label="Título da Ideia"
-            name="titulo"
-            value={formData.titulo}
-            onChange={handleChange}
-            required
-            fullWidth
-            inputProps={{ maxLength: 45 }}
-          />
-          <TextField
-            label="Descrição"
-            name="descricao"
-            value={formData.descricao}
-            onChange={handleChange}
-            required
-            fullWidth
-            multiline
-            rows={4}
-            inputProps={{ maxLength: 255 }}
-          />
-
-          <FormControl fullWidth>
-            <InputLabel id="areas-interesse-label">
-              Áreas de Interesse
-            </InputLabel>
-            <Select
-              labelId="areas-interesse-label"
-              name="areasDeInteresse"
-              multiple
-              value={formData.areasDeInteresse}
+        </CardTitle>
+      </CardHeader>
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="titulo">Título da Ideia</Label>
+            <Input
+              id="titulo"
+              name="titulo"
+              value={formData.titulo}
               onChange={handleChange}
-              input={<OutlinedInput label="Áreas de Interesse" />}
-              renderValue={(selected) => (
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                  {selected.map((value) => {
-                    const area = allAreas.find((a) => a.id_area === value);
-                    return <Chip key={value} label={area ? area.nome : ""} />;
-                  })}
-                </Box>
-              )}
-            >
-              {allAreas.map((area) => (
-                <MenuItem key={area.id_area} value={area.id_area}>
-                  {area.nome}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Box
-            sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 2 }}
-          >
-            {onCancel && (
-              <Button variant="text" onClick={onCancel}>
-                Cancelar
-              </Button>
-            )}
-            <Button type="submit" variant="contained">
-              {initialData ? "Salvar Alterações" : "Salvar Ideia"}
+              required
+              maxLength={45}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="descricao">Descrição</Label>
+            <Textarea
+              id="descricao"
+              name="descricao"
+              value={formData.descricao}
+              onChange={handleChange}
+              required
+              maxLength={255}
+              rows={4}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Áreas de Interesse</Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  {selectedAreaNames.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {selectedAreaNames.map((name) => (
+                        <Badge key={name} variant="secondary">
+                          {name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <span>Selecione as áreas</span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                <DropdownMenuLabel>Áreas disponíveis</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {allAreas.map((area) => (
+                  <DropdownMenuCheckboxItem
+                    key={area.id_area}
+                    checked={formData.areasDeInteresse.includes(area.id_area)}
+                    onCheckedChange={() => handleAreaChange(area.id_area)}
+                  >
+                    {area.nome}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+          {onCancel && (
+            <Button variant="ghost" type="button" onClick={onCancel}>
+              Cancelar
             </Button>
-          </Box>
-        </Box>
-      </CardContent>
+          )}
+          <Button type="submit">
+            {initialData ? "Salvar Alterações" : "Salvar Ideia"}
+          </Button>
+        </CardFooter>
+      </form>
     </Card>
   );
 }

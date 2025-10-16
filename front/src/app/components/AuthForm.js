@@ -1,35 +1,22 @@
 "use client";
 import React, { useState } from "react";
 import useAuth from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 import {
-  Button,
   Card,
   CardContent,
-  TextField,
-  Typography,
-  Box,
-  Tabs,
-  Tab,
-  Alert,
-} from "@mui/material";
-
-function TabPanel(props) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`auth-tabpanel-${index}`}
-      aria-labelledby={`auth-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 export default function AuthForm() {
-  const [tabValue, setTabValue] = useState(0);
   const { login } = useAuth();
   const [loginData, setLoginData] = useState({ email: "", senha: "" });
   const [registerData, setRegisterData] = useState({
@@ -39,11 +26,6 @@ export default function AuthForm() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-    setError("");
-  };
 
   const handleLoginChange = (e) => {
     setLoginData({ ...loginData, [e.target.id]: e.target.value });
@@ -93,109 +75,116 @@ export default function AuthForm() {
   };
 
   return (
-    <Card sx={{ maxWidth: 450, margin: "auto", mt: 5 }}>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
-          <Tab label="Entrar" id="auth-tab-0" />
-          <Tab label="Registrar" id="auth-tab-1" />
-        </Tabs>
-      </Box>
-      <CardContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <TabPanel value={tabValue} index={0}>
-          <Typography variant="h5" sx={{ mb: 2 }} align="center">
-            Login
-          </Typography>
-          <Box
-            component="form"
-            onSubmit={handleLoginSubmit}
-            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-          >
-            <TextField
-              id="email"
-              label="Email"
-              type="email"
-              variant="outlined"
-              fullWidth
-              value={loginData.email}
-              onChange={handleLoginChange}
-              required
-            />
-            <TextField
-              id="senha"
-              label="Senha"
-              type="password"
-              variant="outlined"
-              fullWidth
-              value={loginData.senha}
-              onChange={handleLoginChange}
-              required
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              size="large"
-              disabled={loading}
-            >
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
-          </Box>
-        </TabPanel>
-        <TabPanel value={tabValue} index={1}>
-          <Typography variant="h5" sx={{ mb: 2 }} align="center">
-            Crie sua Conta
-          </Typography>
-          <Box
-            component="form"
-            onSubmit={handleRegisterSubmit}
-            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-          >
-            <TextField
-              id="nome"
-              label="Nome Completo"
-              variant="outlined"
-              fullWidth
-              value={registerData.nome}
-              onChange={handleRegisterChange}
-              required
-            />
-            <TextField
-              id="email"
-              label="Email"
-              type="email"
-              variant="outlined"
-              fullWidth
-              value={registerData.email}
-              onChange={handleRegisterChange}
-              required
-            />
-            <TextField
-              id="senha"
-              label="Senha"
-              type="password"
-              variant="outlined"
-              fullWidth
-              value={registerData.senha}
-              onChange={handleRegisterChange}
-              required
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="secondary"
-              size="large"
-              disabled={loading}
-            >
-              {loading ? "Registrando..." : "Criar Conta"}
-            </Button>
-          </Box>
-        </TabPanel>
-      </CardContent>
-    </Card>
+    <div className="flex justify-center items-center mt-10">
+      <Tabs defaultValue="login" className="w-[400px]">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="login">Entrar</TabsTrigger>
+          <TabsTrigger value="register">Registrar</TabsTrigger>
+        </TabsList>
+        <TabsContent value="login">
+          <Card>
+            <CardHeader>
+              <CardTitle>Login</CardTitle>
+              <CardDescription>
+                Acesse sua conta para continuar.
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleLoginSubmit}>
+              <CardContent className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Erro</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="email-login">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={loginData.email}
+                    onChange={handleLoginChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="senha-login">Senha</Label>
+                  <Input
+                    id="senha"
+                    type="password"
+                    value={loginData.senha}
+                    onChange={handleLoginChange}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Entrar
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </TabsContent>
+        <TabsContent value="register">
+          <Card>
+            <CardHeader>
+              <CardTitle>Registrar</CardTitle>
+              <CardDescription>
+                Crie uma nova conta para começar.
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleRegisterSubmit}>
+              <CardContent className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Erro</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="nome">Nome Completo</Label>
+                  <Input
+                    id="nome"
+                    value={registerData.nome}
+                    onChange={handleRegisterChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email-register">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={registerData.email}
+                    onChange={handleRegisterChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="senha-register">Senha</Label>
+                  <Input
+                    id="senha"
+                    type="password"
+                    value={registerData.senha}
+                    onChange={handleRegisterChange}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Criar Conta
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

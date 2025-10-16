@@ -6,19 +6,12 @@ import {
   criarIdeiaTcc,
   deletarIdeiaTcc,
   atualizarIdeiaTcc,
-  getAreasInteresse, // Importar a função
+  getAreasInteresse,
 } from "@/api/apiService";
 import IdeiaTccForm from "@/app/components/aluno/ideiaTccForm";
 import MinhaIdeiaTccDisplay from "@/app/components/aluno/MinhaIdeiaTccDisplay";
-import {
-  Box,
-  CircularProgress,
-  Typography,
-  Grid,
-  Divider,
-  Alert,
-} from "@mui/material";
-import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, AlertCircle } from "lucide-react";
 
 export default function AlunoPage() {
   useAuthRedirect();
@@ -26,7 +19,7 @@ export default function AlunoPage() {
   const [loading, setLoading] = useState(true);
   const [editingIdeia, setEditingIdeia] = useState(null);
   const [error, setError] = useState(null);
-  const [allAreas, setAllAreas] = useState([]); // Estado para as áreas
+  const [allAreas, setAllAreas] = useState([]);
 
   const fetchInitialData = useCallback(async () => {
     setLoading(true);
@@ -95,6 +88,7 @@ export default function AlunoPage() {
 
   const handleStartEdit = (ideia) => {
     setEditingIdeia(ideia);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleCancelEdit = () => {
@@ -103,24 +97,21 @@ export default function AlunoPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: "900px", margin: "auto" }}>
-      <div>
-        <Button>Click me</Button>
-      </div>
-      <Typography variant="h4" gutterBottom>
-        Minhas Ideias de TCC
-      </Typography>
+    <div className="container mx-auto py-8 max-w-4xl space-y-8">
+      <h1 className="text-3xl font-bold">Minhas Ideias de TCC</h1>
 
       {error && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {error}
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Atenção</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
@@ -131,32 +122,31 @@ export default function AlunoPage() {
             initialData={editingIdeia}
             onCancel={editingIdeia ? handleCancelEdit : null}
             key={editingIdeia ? editingIdeia.id_ideia_tcc : "new"}
-            allAreas={allAreas} // Passar as áreas para o formulário
+            allAreas={allAreas}
           />
 
-          <Divider sx={{ my: 4 }}>
-            <Typography variant="h5">Minhas Propostas</Typography>
-          </Divider>
+          <hr className="my-8" />
+
+          <h2 className="text-2xl font-bold text-center">Minhas Propostas</h2>
 
           {ideiasTcc.length > 0 ? (
-            <Grid container spacing={3}>
+            <div className="grid gap-6 md:grid-cols-2">
               {ideiasTcc.map((ideia) => (
-                <Grid item xs={12} md={6} key={ideia.id_ideia_tcc}>
-                  <MinhaIdeiaTccDisplay
-                    ideiaTcc={ideia}
-                    onEdit={() => handleStartEdit(ideia)}
-                    onDelete={() => handleDelete(ideia.id_ideia_tcc)}
-                  />
-                </Grid>
+                <MinhaIdeiaTccDisplay
+                  key={ideia.id_ideia_tcc}
+                  ideiaTcc={ideia}
+                  onEdit={() => handleStartEdit(ideia)}
+                  onDelete={() => handleDelete(ideia.id_ideia_tcc)}
+                />
               ))}
-            </Grid>
+            </div>
           ) : (
-            <Typography sx={{ textAlign: "center", mt: 2 }}>
+            <p className="text-center text-muted-foreground mt-4">
               Você ainda não cadastrou nenhuma ideia de TCC.
-            </Typography>
+            </p>
           )}
         </>
       )}
-    </Box>
+    </div>
   );
 }

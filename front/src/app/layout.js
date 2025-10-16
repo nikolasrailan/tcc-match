@@ -1,5 +1,4 @@
-// front/src/app/layout.js
-import Navbar from "./components/Navbar"; // Importe o novo componente
+import Navbar from "./components/Navbar";
 import "./globals.css";
 
 export const metadata = {
@@ -9,10 +8,10 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className="">
       <body>
         <Navbar />
-        <main className="p-8">{children}</main>
+        <main className="p-4 sm:p-6 md:p-8">{children}</main>
       </body>
     </html>
   );

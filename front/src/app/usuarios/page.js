@@ -1,27 +1,5 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Typography,
-  Chip,
-  Button,
-  Box,
-  CircularProgress,
-  Modal,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  OutlinedInput,
-} from "@mui/material";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import {
   getUsuarios,
@@ -33,23 +11,54 @@ import {
   getCursos,
   getAreasInteresse,
 } from "@/api/apiService";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Loader2,
+  AlertCircle,
+  Trash2,
+  Edit,
+  UserPlus,
+  GraduationCap,
+  Briefcase,
+} from "lucide-react";
 import Link from "next/link";
-
-// Estilo para o Modal
-const styleModal = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 400,
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-};
 
 export default function UsuariosPage() {
   useAuthRedirect(); // Protege a rota
@@ -57,13 +66,14 @@ export default function UsuariosPage() {
   const [cursos, setCursos] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [usuarioSelecionado, setUsuarioSelecionado] = useState(null);
-  const [tipoPerfil, setTipoPerfil] = useState("");
+
+  // State for modals
+  const [modalState, setModalState] = useState({ type: null, user: null });
+
+  // State for forms
   const [dadosPerfil, setDadosPerfil] = useState({});
   const [dadosEdicao, setDadosEdicao] = useState({});
+
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -84,58 +94,40 @@ export default function UsuariosPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleOpenModal = (usuario, tipo) => {
-    setUsuarioSelecionado(usuario);
-    setTipoPerfil(tipo);
-    setDadosPerfil(
-      tipo === "aluno"
-        ? { matricula: "", id_curso: "", id_usuario: usuario.id_usuario }
-        : {
-            disponibilidade: 1,
-            areasDeInteresse: [],
-            id_usuario: usuario.id_usuario,
-          }
-    );
-    setModalOpen(true);
+  const openModal = (type, user) => {
+    setError(null);
+    setSuccess(null);
+    setModalState({ type, user });
+
+    if (type === "editar") {
+      setDadosEdicao({
+        nome: user.nome || "",
+        email: user.email || "",
+        matricula: user.dadosAluno?.matricula || "",
+        id_curso: user.dadosAluno?.cursoInfo?.id_curso || "",
+        areasDeInteresse:
+          user.dadosProfessor?.areasDeInteresse?.map((a) => a.id_area) || [],
+        disponibilidade: user.dadosProfessor?.disponibilidade ? "1" : "0",
+        limite_orientacoes: user.dadosProfessor?.limite_orientacoes || 5,
+      });
+    } else if (type === "tornarAluno") {
+      setDadosPerfil({
+        matricula: "",
+        id_curso: "",
+        id_usuario: user.id_usuario,
+      });
+    } else if (type === "tornarProfessor") {
+      setDadosPerfil({
+        disponibilidade: 1,
+        areasDeInteresse: [],
+        id_usuario: user.id_usuario,
+        limite_orientacoes: 5,
+      });
+    }
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setUsuarioSelecionado(null);
-    setDadosPerfil({});
-  };
-
-  const handleOpenEditModal = (usuario) => {
-    setUsuarioSelecionado(usuario);
-    setDadosEdicao({
-      nome: usuario.nome || "",
-      email: usuario.email || "",
-      matricula: usuario.dadosAluno?.matricula || "",
-      id_curso: usuario.dadosAluno?.cursoInfo?.id_curso || "",
-      areasDeInteresse:
-        usuario.dadosProfessor?.areasDeInteresse?.map((a) => a.id_area) || [],
-      disponibilidade:
-        usuario.dadosProfessor?.disponibilidade !== undefined
-          ? String(Number(usuario.dadosProfessor.disponibilidade))
-          : "",
-    });
-    setEditModalOpen(true);
-  };
-
-  const handleCloseEditModal = () => {
-    setEditModalOpen(false);
-    setUsuarioSelecionado(null);
-    setDadosEdicao({});
-  };
-
-  const handleOpenDeleteModal = (usuario) => {
-    setUsuarioSelecionado(usuario);
-    setDeleteModalOpen(true);
-  };
-
-  const handleCloseDeleteModal = () => {
-    setDeleteModalOpen(false);
-    setUsuarioSelecionado(null);
+  const closeModal = () => {
+    setModalState({ type: null, user: null });
   };
 
   const handleInputChange = (e, setData) => {
@@ -143,49 +135,60 @@ export default function UsuariosPage() {
     setData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmitModal = async (e) => {
+  const handleSelectChange = (value, name, setData) => {
+    setData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAreaChange = (areaId) => {
+    setDadosEdicao((prev) => {
+      const newAreas = prev.areasDeInteresse.includes(areaId)
+        ? prev.areasDeInteresse.filter((id) => id !== areaId)
+        : [...prev.areasDeInteresse, areaId];
+      return { ...prev, areasDeInteresse: newAreas };
+    });
+  };
+
+  const handleSubmitPerfil = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(null);
 
-    const result = await criarPerfil(tipoPerfil, dadosPerfil);
+    const result = await criarPerfil(
+      modalState.type === "tornarAluno" ? "aluno" : "professor",
+      dadosPerfil
+    );
 
     setLoading(false);
     if (result) {
-      setSuccess(
-        `${
-          tipoPerfil.charAt(0).toUpperCase() + tipoPerfil.slice(1)
-        } criado com sucesso!`
-      );
-      handleCloseModal();
+      setSuccess(`Perfil criado com sucesso!`);
+      closeModal();
       fetchData();
     } else {
-      setError(`Erro ao criar perfil de ${tipoPerfil}.`);
+      setError(`Erro ao criar perfil.`);
     }
   };
 
-  const handleSubmitEditModal = async (e) => {
+  const handleSubmitEdit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(null);
-    if (!usuarioSelecionado) return;
 
-    const dadosParaEnvio = {
+    const dataToUpdate = {
       ...dadosEdicao,
-      disponibilidade: dadosEdicao.disponibilidade === "1",
+      disponibilidade: dadosEdicao.disponibilidade === "1" ? 1 : 0,
     };
 
     const result = await updateUsuario(
-      usuarioSelecionado.id_usuario,
-      dadosParaEnvio
+      modalState.user.id_usuario,
+      dataToUpdate
     );
     setLoading(false);
 
     if (result) {
       setSuccess("Usuário atualizado com sucesso!");
-      handleCloseEditModal();
+      closeModal();
       fetchData();
     } else {
       setError("Ocorreu um erro ao atualizar o usuário.");
@@ -193,352 +196,436 @@ export default function UsuariosPage() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!usuarioSelecionado) return;
-    const sucesso = await deleteUsuario(usuarioSelecionado.id_usuario);
-    if (sucesso) {
-      alert("Usuário desativado com sucesso!");
-      handleCloseDeleteModal();
+    const result = await deleteUsuario(modalState.user.id_usuario);
+    if (result) {
+      setSuccess("Usuário desativado com sucesso!");
+      closeModal();
       fetchData();
+    } else {
+      setError("Erro ao desativar usuário.");
+      closeModal();
     }
   };
 
   const handleRemoveProfile = async (usuario) => {
-    let sucesso = false;
-    if (usuario.dadosAluno) {
-      sucesso = await deleteAlunoProfile(usuario.dadosAluno.id_aluno);
-    } else if (usuario.dadosProfessor) {
-      sucesso = await deleteProfessorProfile(
-        usuario.dadosProfessor.id_professor
-      );
-    }
+    let success = false;
+    const profileType = usuario.dadosAluno ? "aluno" : "professor";
+    if (
+      confirm(
+        `Tem certeza que deseja remover o perfil de ${profileType} de ${usuario.nome}?`
+      )
+    ) {
+      if (usuario.dadosAluno) {
+        success = await deleteAlunoProfile(usuario.dadosAluno.id_aluno);
+      } else if (usuario.dadosProfessor) {
+        success = await deleteProfessorProfile(
+          usuario.dadosProfessor.id_professor
+        );
+      }
 
-    if (sucesso) {
-      alert("Perfil removido com sucesso!");
-      fetchData();
+      if (success) {
+        setSuccess("Perfil removido com sucesso!");
+        fetchData();
+      } else {
+        setError("Erro ao remover perfil.");
+      }
     }
   };
 
-  const getStatusChip = (usuario) => {
-    if (usuario.isAdmin) return <Chip label="Admin" color="secondary" />;
+  const getStatusBadge = (usuario) => {
+    if (usuario.isAdmin) return <Badge variant="destructive">Admin</Badge>;
     if (usuario.dadosProfessor)
-      return <Chip label="Professor" color="primary" />;
-    if (usuario.dadosAluno) return <Chip label="Aluno" color="success" />;
-    return <Chip label="Nenhum" variant="outlined" />;
+      return <Badge variant="secondary">Professor</Badge>;
+    if (usuario.dadosAluno) return <Badge>Aluno</Badge>;
+    return <Badge variant="outline">Sem Perfil</Badge>;
   };
 
-  if (loading) {
+  if (loading && usuarios.length === 0) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
   }
 
   return (
-    <Box
-      sx={{
-        p: 3,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <Typography variant="h4" gutterBottom>
-        Painel de Gerenciamento de Usuários
-      </Typography>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Gerenciamento de Usuários</h1>
+        <Button asChild>
+          <Link href="/usuarios/criar">
+            <UserPlus className="mr-2 h-4 w-4" /> Adicionar Usuário
+          </Link>
+        </Button>
+      </div>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2, width: "100%", maxWidth: "80%" }}>
-          {error}
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       {success && (
-        <Alert
-          severity="success"
-          sx={{ mb: 2, width: "100%", maxWidth: "80%" }}
-        >
-          {success}
+        <Alert className="mb-4 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300">
+          <AlertTitle>Sucesso</AlertTitle>
+          <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 
-      <TableContainer
-        component={Paper}
-        sx={{ maxWidth: "90%", margin: "auto" }}
-      >
-        <Table sx={{ minWidth: 650 }} aria-label="tabela de usuarios">
-          <TableHead>
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Nome</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Ações</TableCell>
+              <TableHead>Nome</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
-          </TableHead>
+          </TableHeader>
           <TableBody>
             {usuarios.map((usuario) => (
               <TableRow key={usuario.id_usuario}>
-                <TableCell>{usuario.id_usuario}</TableCell>
-                <TableCell>{usuario.nome}</TableCell>
+                <TableCell className="font-medium">{usuario.nome}</TableCell>
                 <TableCell>{usuario.email}</TableCell>
-                <TableCell>{getStatusChip(usuario)}</TableCell>
-                <TableCell align="center">
-                  <Box
-                    sx={{ display: "flex", gap: 1, justifyContent: "center" }}
-                  >
-                    {!usuario.dadosProfessor &&
-                      !usuario.dadosAluno &&
-                      !usuario.isAdmin && (
-                        <>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={() => handleOpenModal(usuario, "aluno")}
-                          >
-                            Tornar Aluno
-                          </Button>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            color="info"
-                            onClick={() =>
-                              handleOpenModal(usuario, "professor")
-                            }
-                          >
-                            Tornar Prof.
-                          </Button>
-                        </>
-                      )}
-                    {(usuario.dadosAluno || usuario.dadosProfessor) &&
-                      !usuario.isAdmin && (
+                <TableCell>{getStatusBadge(usuario)}</TableCell>
+                <TableCell className="text-right space-x-2">
+                  {!usuario.dadosProfessor &&
+                    !usuario.dadosAluno &&
+                    !usuario.isAdmin && (
+                      <>
                         <Button
-                          variant="outlined"
-                          size="small"
-                          color="warning"
-                          onClick={() => handleRemoveProfile(usuario)}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openModal("tornarAluno", usuario)}
                         >
-                          Rem. Perfil
+                          <GraduationCap className="mr-2 h-4 w-4" />
+                          Tornar Aluno
                         </Button>
-                      )}
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="primary"
-                      onClick={() => handleOpenEditModal(usuario)}
-                    >
-                      Editar
-                    </Button>
-                    {!usuario.isAdmin && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openModal("tornarProfessor", usuario)}
+                        >
+                          <Briefcase className="mr-2 h-4 w-4" />
+                          Tornar Prof.
+                        </Button>
+                      </>
+                    )}
+                  {(usuario.dadosAluno || usuario.dadosProfessor) &&
+                    !usuario.isAdmin && (
                       <Button
-                        variant="outlined"
-                        size="small"
-                        color="error"
-                        onClick={() => handleOpenDeleteModal(usuario)}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveProfile(usuario)}
                       >
-                        Excluir
+                        Rem. Perfil
                       </Button>
                     )}
-                  </Box>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openModal("editar", usuario)}
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </Button>
+                  {!usuario.isAdmin && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => openModal("excluir", usuario)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
+      </div>
 
-      {/* Modal para criar perfil */}
-      <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Box sx={styleModal} component="form" onSubmit={handleSubmitModal}>
-          <Typography variant="h6">
-            Tornar {usuarioSelecionado?.nome} um {tipoPerfil}
-          </Typography>
-          {tipoPerfil === "aluno" ? (
-            <>
-              <TextField
-                name="matricula"
-                label="Matrícula"
-                onChange={(e) => handleInputChange(e, setDadosPerfil)}
-                required
-                fullWidth
-              />
-              <FormControl fullWidth required>
-                <InputLabel id="curso-label">Curso</InputLabel>
-                <Select
-                  labelId="curso-label"
-                  name="id_curso"
-                  value={dadosPerfil.id_curso || ""}
-                  label="Curso"
-                  onChange={(e) => handleInputChange(e, setDadosPerfil)}
-                >
-                  {cursos.map((curso) => (
-                    <MenuItem key={curso.id_curso} value={curso.id_curso}>
-                      {curso.nome}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </>
-          ) : (
-            <FormControl fullWidth>
-              <InputLabel id="areas-label">Áreas de Interesse</InputLabel>
-              <Select
-                labelId="areas-label"
-                name="areasDeInteresse"
-                multiple
-                value={dadosPerfil.areasDeInteresse || []}
-                onChange={(e) => handleInputChange(e, setDadosPerfil)}
-                input={<OutlinedInput label="Áreas de Interesse" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                    {selected.map((value) => {
-                      const area = areas.find((a) => a.id_area === value);
-                      return <Chip key={value} label={area ? area.nome : ""} />;
-                    })}
-                  </Box>
-                )}
-              >
-                {areas.map((area) => (
-                  <MenuItem key={area.id_area} value={area.id_area}>
-                    {area.nome}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-          <Button type="submit" variant="contained">
-            Confirmar
-          </Button>
-        </Box>
-      </Modal>
+      {/* --- DIALOGS --- */}
 
-      {/* Modal para editar usuário */}
-      <Modal open={editModalOpen} onClose={handleCloseEditModal}>
-        <Box sx={styleModal} component="form" onSubmit={handleSubmitEditModal}>
-          <Typography variant="h6">
-            Editar Usuário: {usuarioSelecionado?.nome}
-          </Typography>
-          <TextField
-            name="nome"
-            label="Nome"
-            value={dadosEdicao.nome || ""}
-            onChange={(e) => handleInputChange(e, setDadosEdicao)}
-            required
-            fullWidth
-          />
-          <TextField
-            name="email"
-            label="Email"
-            type="email"
-            value={dadosEdicao.email || ""}
-            onChange={(e) => handleInputChange(e, setDadosEdicao)}
-            required
-            fullWidth
-          />
-          {usuarioSelecionado?.dadosAluno && (
-            <>
-              <TextField
-                name="matricula"
-                label="Matrícula"
-                value={dadosEdicao.matricula || ""}
-                onChange={(e) => handleInputChange(e, setDadosEdicao)}
-                fullWidth
-              />
-              <FormControl fullWidth>
-                <InputLabel id="curso-label-edit">Curso</InputLabel>
-                <Select
-                  labelId="curso-label-edit"
-                  name="id_curso"
-                  value={dadosEdicao.id_curso || ""}
-                  label="Curso"
-                  onChange={(e) => handleInputChange(e, setDadosEdicao)}
-                >
-                  {cursos.map((curso) => (
-                    <MenuItem key={curso.id_curso} value={curso.id_curso}>
-                      {curso.nome}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </>
-          )}
-          {usuarioSelecionado?.dadosProfessor && (
-            <>
-              <FormControl fullWidth>
-                <InputLabel id="areas-label-edit">
-                  Áreas de Interesse
-                </InputLabel>
-                <Select
-                  labelId="areas-label-edit"
-                  name="areasDeInteresse"
-                  multiple
-                  value={dadosEdicao.areasDeInteresse || []}
-                  onChange={(e) => handleInputChange(e, setDadosEdicao)}
-                  input={<OutlinedInput label="Áreas de Interesse" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {selected.map((value) => {
-                        const area = areas.find((a) => a.id_area === value);
-                        return (
-                          <Chip key={value} label={area ? area.nome : ""} />
-                        );
-                      })}
-                    </Box>
-                  )}
-                >
-                  {areas.map((area) => (
-                    <MenuItem key={area.id_area} value={area.id_area}>
-                      {area.nome}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel id="disponibilidade-label">
-                  Disponibilidade
-                </InputLabel>
-                <Select
-                  labelId="disponibilidade-label"
-                  name="disponibilidade"
-                  value={dadosEdicao.disponibilidade || "0"}
-                  label="Disponibilidade"
-                  onChange={(e) => handleInputChange(e, setDadosEdicao)}
-                >
-                  <MenuItem value={"1"}>Disponível</MenuItem>
-                  <MenuItem value={"0"}>Indisponível</MenuItem>
-                </Select>
-              </FormControl>
-            </>
-          )}
-          <Button type="submit" variant="contained">
-            Salvar Alterações
-          </Button>
-        </Box>
-      </Modal>
+      {/* Criar Perfil Aluno/Professor */}
+      <Dialog
+        open={
+          modalState.type === "tornarAluno" ||
+          modalState.type === "tornarProfessor"
+        }
+        onOpenChange={closeModal}
+      >
+        <DialogContent>
+          <form onSubmit={handleSubmitPerfil}>
+            <DialogHeader>
+              <DialogTitle>
+                Tornar {modalState.user?.nome} um{" "}
+                {modalState.type === "tornarAluno" ? "Aluno" : "Professor"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              {modalState.type === "tornarAluno" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="matricula">Matrícula</Label>
+                    <Input
+                      id="matricula"
+                      name="matricula"
+                      onChange={(e) => handleInputChange(e, setDadosPerfil)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Curso</Label>
+                    <Select
+                      name="id_curso"
+                      onValueChange={(value) =>
+                        handleSelectChange(value, "id_curso", setDadosPerfil)
+                      }
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o curso" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cursos.map((curso) => (
+                          <SelectItem
+                            key={curso.id_curso}
+                            value={curso.id_curso}
+                          >
+                            {curso.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Áreas de Interesse</Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        {dadosPerfil.areasDeInteresse?.length > 0
+                          ? `${dadosPerfil.areasDeInteresse.length} áreas selecionadas`
+                          : "Selecione as áreas"}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                      {areas.map((area) => (
+                        <DropdownMenuCheckboxItem
+                          key={area.id_area}
+                          checked={dadosPerfil.areasDeInteresse?.includes(
+                            area.id_area
+                          )}
+                          onCheckedChange={() => {
+                            const currentAreas =
+                              dadosPerfil.areasDeInteresse || [];
+                            const newAreas = currentAreas.includes(area.id_area)
+                              ? currentAreas.filter((id) => id !== area.id_area)
+                              : [...currentAreas, area.id_area];
+                            setDadosPerfil((prev) => ({
+                              ...prev,
+                              areasDeInteresse: newAreas,
+                            }));
+                          }}
+                        >
+                          {area.nome}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Cancelar
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirmar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      {/* Modal de confirmação de exclusão */}
-      <Modal open={deleteModalOpen} onClose={handleCloseDeleteModal}>
-        <Box sx={styleModal}>
-          <Typography variant="h6">Confirmar Exclusão</Typography>
-          <Typography>
-            Tem certeza que deseja desativar a conta de{" "}
-            {usuarioSelecionado?.nome}? Esta ação não pode ser desfeita.
-          </Typography>
-          <Box
-            sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}
-          >
-            <Button variant="text" onClick={handleCloseDeleteModal}>
-              Cancelar
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleConfirmDelete}
-            >
+      {/* Editar Usuário */}
+      <Dialog open={modalState.type === "editar"} onOpenChange={closeModal}>
+        <DialogContent>
+          <form onSubmit={handleSubmitEdit}>
+            <DialogHeader>
+              <DialogTitle>Editar Usuário: {modalState.user?.nome}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="space-y-2">
+                <Label htmlFor="nome-edit">Nome</Label>
+                <Input
+                  id="nome-edit"
+                  name="nome"
+                  value={dadosEdicao.nome || ""}
+                  onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email-edit">Email</Label>
+                <Input
+                  id="email-edit"
+                  name="email"
+                  type="email"
+                  value={dadosEdicao.email || ""}
+                  onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                  required
+                />
+              </div>
+              {modalState.user?.dadosAluno && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="matricula-edit">Matrícula</Label>
+                    <Input
+                      id="matricula-edit"
+                      name="matricula"
+                      value={dadosEdicao.matricula || ""}
+                      onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Curso</Label>
+                    <Select
+                      name="id_curso"
+                      value={dadosEdicao.id_curso}
+                      onValueChange={(value) =>
+                        handleSelectChange(value, "id_curso", setDadosEdicao)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o curso" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cursos.map((curso) => (
+                          <SelectItem
+                            key={curso.id_curso}
+                            value={curso.id_curso}
+                          >
+                            {curso.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+              {modalState.user?.dadosProfessor && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Áreas de Interesse</Label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          {dadosEdicao.areasDeInteresse?.length > 0
+                            ? `${dadosEdicao.areasDeInteresse.length} áreas selecionadas`
+                            : "Selecione as áreas"}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                        {areas.map((area) => (
+                          <DropdownMenuCheckboxItem
+                            key={area.id_area}
+                            checked={dadosEdicao.areasDeInteresse?.includes(
+                              area.id_area
+                            )}
+                            onCheckedChange={() =>
+                              handleAreaChange(area.id_area)
+                            }
+                          >
+                            {area.nome}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Disponibilidade</Label>
+                    <Select
+                      name="disponibilidade"
+                      value={dadosEdicao.disponibilidade}
+                      onValueChange={(value) =>
+                        handleSelectChange(
+                          value,
+                          "disponibilidade",
+                          setDadosEdicao
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Disponível</SelectItem>
+                        <SelectItem value="0">Indisponível</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="limite-edit">Limite de Orientandos</Label>
+                    <Input
+                      id="limite-edit"
+                      name="limite_orientacoes"
+                      type="number"
+                      value={dadosEdicao.limite_orientacoes || ""}
+                      onChange={(e) => handleInputChange(e, setDadosEdicao)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Cancelar
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar Alterações
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Excluir Usuário */}
+      <Dialog open={modalState.type === "excluir"} onOpenChange={closeModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja desativar a conta de{" "}
+              {modalState.user?.nome}? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary">Cancelar</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
               Confirmar
             </Button>
-          </Box>
-        </Box>
-      </Modal>
-    </Box>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

@@ -1,91 +1,82 @@
 "use client";
 import React from "react";
 import {
-  Typography,
-  Button,
-  Box,
   Card,
   CardContent,
-  CardActions,
-  Grid,
-} from "@mui/material";
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function MinhaIdeiaTccDisplay({ ideiaTcc, onEdit, onDelete }) {
-  const getStatusText = (status) => {
+  const getStatusInfo = (status) => {
     switch (status) {
       case 0:
-        return <Badge variant="secondary">Pendente</Badge>;
+        return { text: "Pendente", variant: "secondary" };
       case 1:
-        return <Badge>Em avaliação</Badge>;
+        return { text: "Em avaliação", variant: "default" };
       case 2:
-        return <Badge>Aprovado</Badge>;
+        return {
+          text: "Aprovado",
+          variant: "default",
+          className: "bg-green-600",
+        };
       case 3:
-        return <Badge variant="outline">Cancelado</Badge>;
+        return { text: "Cancelado", variant: "outline" };
       case 4:
-        return <Badge variant="destructive">Rejeitado</Badge>;
+        return { text: "Rejeitado", variant: "destructive" };
       default:
-        return <Badge variant="outline">Desconhecido</Badge>;
+        return { text: "Desconhecido", variant: "outline" };
     }
   };
 
+  const statusInfo = getStatusInfo(ideiaTcc.status);
+
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h5" component="h2" gutterBottom>
-          {ideiaTcc.titulo}
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <Typography variant="body1">{ideiaTcc.descricao}</Typography>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Typography variant="caption" display="block">
-              Áreas de Interesse
-            </Typography>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-              {ideiaTcc.areasDeInteresse &&
-              ideiaTcc.areasDeInteresse.length > 0 ? (
-                ideiaTcc.areasDeInteresse.map((area) => (
-                  <Badge key={area.id_area} variant="secondary">
-                    {area.nome}
-                  </Badge>
-                ))
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Nenhuma área selecionada.
-                </Typography>
-              )}
-            </Box>
-          </Grid>
-
-          <Grid item xs={6}>
-            <Typography variant="caption">Data de Submissão</Typography>
-            <Typography>
-              {new Date(ideiaTcc.data_submissao).toLocaleDateString()}
-            </Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography variant="caption">Status</Typography>
-            <Typography component="div">
-              {getStatusText(ideiaTcc.status)}
-            </Typography>
-          </Grid>
-        </Grid>
+    <Card className="flex flex-col h-full">
+      <CardHeader>
+        <CardTitle>{ideiaTcc.titulo}</CardTitle>
+        <div className="flex justify-between items-center pt-2">
+          <span className="text-sm text-muted-foreground">
+            {new Date(ideiaTcc.data_submissao).toLocaleDateString()}
+          </span>
+          <Badge variant={statusInfo.variant} className={statusInfo.className}>
+            {statusInfo.text}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-grow space-y-4">
+        <p className="text-sm text-muted-foreground">{ideiaTcc.descricao}</p>
+        <div>
+          <h4 className="text-xs font-semibold mb-2">Áreas de Interesse</h4>
+          <div className="flex flex-wrap gap-1">
+            {ideiaTcc.areasDeInteresse &&
+            ideiaTcc.areasDeInteresse.length > 0 ? (
+              ideiaTcc.areasDeInteresse.map((area) => (
+                <Badge key={area.id_area} variant="secondary">
+                  {area.nome}
+                </Badge>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma área selecionada.
+              </p>
+            )}
+          </div>
+        </div>
       </CardContent>
-      <CardActions sx={{ justifyContent: "flex-end" }}>
-        {ideiaTcc.status === 0 && ( // Só permite editar se o status for "Submetido"
-          <>
-            <Button size="small" onClick={onEdit}>
-              Editar
-            </Button>
-            <Button size="small" color="error" onClick={onDelete}>
-              Excluir
-            </Button>
-          </>
-        )}
-      </CardActions>
+      {ideiaTcc.status === 0 && (
+        <CardFooter className="justify-end">
+          <Button size="sm" variant="ghost" onClick={onEdit}>
+            Editar
+          </Button>
+          <Button size="sm" variant="destructive" onClick={onDelete}>
+            Excluir
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 }

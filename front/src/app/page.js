@@ -1,5 +1,5 @@
 "use client";
-import { Button, Typography, Box, Paper, Container } from "@mui/material";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -12,35 +12,28 @@ export default function Home() {
 
   return (
     <main>
-      <Container maxWidth="md">
-        <Paper elevation={3} sx={{ p: 4, mt: 5, textAlign: "center" }}>
-          <Typography variant="h2" component="h1" gutterBottom>
+      <div className="container mx-auto max-w-3xl">
+        <div className="mt-5 text-center p-4 md:p-8">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
             Bem-vindo ao TCC Match
-          </Typography>
-          <Typography variant="h5" color="text.secondary" paragraph>
+          </h1>
+          <p className="text-lg text-muted-foreground mb-8">
             A plataforma para conectar alunos e professores para o trabalho de
             conclusão de curso.
-          </Typography>
-          <Box
-            sx={{ mt: 4, display: "flex", justifyContent: "center", gap: 2 }}
-          >
+          </p>
+          <div className="mt-4 flex justify-center gap-2">
             {token ? (
-              <Typography>Você já está logado. Navegue pelo menu.</Typography>
+              <p className="text-muted-foreground">
+                Você já está logado. Navegue pelo menu.
+              </p>
             ) : (
-              <>
-                <Button
-                  component={Link}
-                  href="/login"
-                  variant="contained"
-                  size="large"
-                >
-                  Entrar / Registrar
-                </Button>
-              </>
+              <Button asChild size="lg">
+                <Link href="/login">Entrar / Registrar</Link>
+              </Button>
             )}
-          </Box>
-        </Paper>
-      </Container>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

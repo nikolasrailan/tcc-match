@@ -11,34 +11,25 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
+  TableHeader,
   TableRow,
-  Paper,
-  Typography,
-  Button,
-  Box,
-  CircularProgress,
-  Modal,
-  TextField,
-  Alert,
-} from "@mui/material";
-
-// Estilo para o Modal
-const styleModal = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 400,
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-};
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, AlertCircle } from "lucide-react";
 
 export default function CursosPage() {
   useAuthRedirect();
@@ -49,6 +40,7 @@ export default function CursosPage() {
   const [cursoEmEdicao, setCursoEmEdicao] = useState(null);
   const [novoCursoNome, setNovoCursoNome] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const fetchCursos = useCallback(async () => {
     setLoading(true);
@@ -63,145 +55,180 @@ export default function CursosPage() {
     fetchCursos();
   }, [fetchCursos]);
 
-  const handleOpenModal = () => {
-    setModalOpen(true);
-    setNovoCursoNome("");
-    setError("");
-  };
-
-  const handleCloseModal = () => {
-    setModalOpen(false);
-  };
-
   const handleOpenEditModal = (curso) => {
     setCursoEmEdicao(curso);
-    setNovoCursoNome(curso.nome);
+    setNovaCursoNome(curso.nome);
     setEditModalOpen(true);
     setError("");
   };
 
-  const handleCloseEditModal = () => {
-    setEditModalOpen(false);
-    setCursoEmEdicao(null);
-    setNovoCursoNome("");
-  };
-
   const handleCreateCurso = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
-
+    setSuccess("");
     if (!novoCursoNome.trim()) {
       setError("O nome do curso não pode ser vazio.");
-      setLoading(false);
       return;
     }
-
-    const result = await criarCurso({ nome: novoCursoNome });
-    if (result) {
-      alert("Curso criado com sucesso!");
-      handleCloseModal();
+    try {
+      await criarCurso({ nome: novoCursoNome });
+      setSuccess("Curso criado com sucesso!");
+      setModalOpen(false);
       fetchCursos();
-    } else {
-      setError("Erro ao criar curso. O nome pode já existir.");
+    } catch (err) {
+      setError(err.message || "Erro ao criar curso.");
     }
-    setLoading(false);
   };
 
   const handleUpdateCurso = async (e) => {
     e.preventDefault();
     if (!cursoEmEdicao) return;
-    setLoading(true);
     setError("");
-
+    setSuccess("");
     if (!novoCursoNome.trim()) {
       setError("O nome do curso não pode ser vazio.");
-      setLoading(false);
       return;
     }
-
-    const result = await atualizarCurso(cursoEmEdicao.id_curso, {
-      nome: novoCursoNome,
-    });
-    if (result) {
-      handleCloseEditModal();
+    try {
+      await atualizarCurso(cursoEmEdicao.id_curso, { nome: novoCursoNome });
+      setSuccess("Curso atualizado com sucesso!");
+      setEditModalOpen(false);
       fetchCursos();
-    } else {
-      setError("Erro ao atualizar curso. O nome pode já existir.");
+    } catch (err) {
+      setError(err.message || "Erro ao atualizar curso.");
     }
-    setLoading(false);
   };
 
   const handleDeleteCurso = async (cursoId) => {
-    const confirmed = window.confirm(
-      "Tem certeza que deseja deletar este curso? Esta ação não pode ser desfeita e removerá alunos associados."
-    );
-    if (confirmed) {
-      const result = await deletarCurso(cursoId);
-      if (result) {
-        alert("Curso deletado com sucesso!");
+    if (window.confirm("Tem certeza que deseja deletar este curso?")) {
+      try {
+        await deletarCurso(cursoId);
+        setSuccess("Curso deletado com sucesso!");
         fetchCursos();
-      } else {
-        alert("Erro ao deletar curso.");
+      } catch (err) {
+        setError(err.message || "Erro ao deletar curso.");
       }
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
   }
 
   return (
-    <Box
-      sx={{
-        p: 3,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <Typography variant="h4" gutterBottom>
-        Gerenciar Cursos
-      </Typography>
-      <Button variant="contained" onClick={handleOpenModal} sx={{ mb: 3 }}>
-        Adicionar Novo Curso
-      </Button>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Gerenciar Cursos</h1>
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogTrigger asChild>
+            <Button>Adicionar Novo Curso</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <form onSubmit={handleCreateCurso}>
+              <DialogHeader>
+                <DialogTitle>Criar Novo Curso</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 space-y-2">
+                <Label htmlFor="nome">Nome do Curso</Label>
+                <Input
+                  id="nome"
+                  value={novoCursoNome}
+                  onChange={(e) => setNovoCursoNome(e.target.value)}
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">
+                    Cancelar
+                  </Button>
+                </DialogClose>
+                <Button type="submit">Confirmar</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-      <TableContainer
-        component={Paper}
-        sx={{ maxWidth: "80%", margin: "auto" }}
-      >
-        <Table sx={{ minWidth: 650 }} aria-label="tabela de cursos">
-          <TableHead>
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {success && (
+        <Alert className="mb-4 bg-green-100 border-green-400 text-green-700">
+          <AlertTitle>Sucesso</AlertTitle>
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Nome do Curso</TableCell>
-              <TableCell align="center">Ações</TableCell>
+              <TableHead className="w-[100px]">ID</TableHead>
+              <TableHead>Nome do Curso</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
-          </TableHead>
+          </TableHeader>
           <TableBody>
             {cursos.map((curso) => (
               <TableRow key={curso.id_curso}>
-                <TableCell>{curso.id_curso}</TableCell>
+                <TableCell className="font-medium">{curso.id_curso}</TableCell>
                 <TableCell>{curso.nome}</TableCell>
-                <TableCell align="center">
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    color="primary"
-                    onClick={() => handleOpenEditModal(curso)}
-                    sx={{ mr: 1 }}
+                <TableCell className="text-right space-x-2">
+                  <Dialog
+                    open={
+                      editModalOpen &&
+                      cursoEmEdicao?.id_curso === curso.id_curso
+                    }
+                    onOpenChange={(isOpen) =>
+                      !isOpen && setEditModalOpen(false)
+                    }
                   >
-                    Editar
-                  </Button>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenEditModal(curso)}
+                      >
+                        Editar
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <form onSubmit={handleUpdateCurso}>
+                        <DialogHeader>
+                          <DialogTitle>Editar Curso</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4 space-y-2">
+                          <Label htmlFor="nome-edit">Nome do Curso</Label>
+                          <Input
+                            id="nome-edit"
+                            value={novoCursoNome}
+                            onChange={(e) => setNovaCursoNome(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                              Cancelar
+                            </Button>
+                          </DialogClose>
+                          <Button type="submit">Salvar Alterações</Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                   <Button
-                    variant="outlined"
-                    size="small"
-                    color="error"
+                    variant="destructive"
+                    size="sm"
                     onClick={() => handleDeleteCurso(curso.id_curso)}
                   >
                     Excluir
@@ -211,45 +238,7 @@ export default function CursosPage() {
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
-
-      {/* Modal para criar curso */}
-      <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Box sx={styleModal} component="form" onSubmit={handleCreateCurso}>
-          <Typography variant="h6">Criar Novo Curso</Typography>
-          {error && <Alert severity="error">{error}</Alert>}
-          <TextField
-            name="nome"
-            label="Nome do Curso"
-            onChange={(e) => setNovoCursoNome(e.target.value)}
-            value={novoCursoNome}
-            required
-            fullWidth
-          />
-          <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? "Criando..." : "Confirmar"}
-          </Button>
-        </Box>
-      </Modal>
-
-      {/* Modal para editar curso */}
-      <Modal open={editModalOpen} onClose={handleCloseEditModal}>
-        <Box sx={styleModal} component="form" onSubmit={handleUpdateCurso}>
-          <Typography variant="h6">Editar Curso</Typography>
-          {error && <Alert severity="error">{error}</Alert>}
-          <TextField
-            name="nome"
-            label="Nome do Curso"
-            onChange={(e) => setNovoCursoNome(e.target.value)}
-            value={novoCursoNome}
-            required
-            fullWidth
-          />
-          <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? "Salvando..." : "Salvar Alterações"}
-          </Button>
-        </Box>
-      </Modal>
-    </Box>
+      </div>
+    </div>
   );
 }
