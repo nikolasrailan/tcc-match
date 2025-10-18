@@ -47,6 +47,7 @@ const TopicosDialog = ({
   });
   const [commentingTopico, setCommentingTopico] = useState(null);
   const [comentario, setComentario] = useState("");
+  const [viewingTopico, setViewingTopico] = useState(null);
 
   const handleCreateOrUpdate = async (formData) => {
     try {
@@ -118,7 +119,7 @@ const TopicosDialog = ({
 
   return (
     <>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Tópicos da Orientação</DialogTitle>
           <DialogDescription>
@@ -148,14 +149,14 @@ const TopicosDialog = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {topicosList.length > 0 ? (
+                  {topicosList && topicosList.length > 0 ? (
                     topicosList.map((topico) => (
                       <TableRow key={topico.id_topico}>
                         <TableCell className="font-medium">
                           <p>{topico.titulo}</p>
-                          <p className="text-xs text-muted-foreground">
+                          {/* <p className="text-xs text-muted-foreground">
                             {topico.descricao}
-                          </p>
+                          </p> */}
                           {topico.comentario_professor && (
                             <p className="text-xs mt-2 p-2 bg-muted rounded-md">
                               <strong>Prof:</strong>{" "}
@@ -168,27 +169,46 @@ const TopicosDialog = ({
                         </TableCell>
                         <TableCell>{getStatusBadge(topico.status)}</TableCell>
                         <TableCell className="text-right space-x-1">
-                          {userRole === "aluno" &&
-                            topico.status === "enviado" && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setEditingTopico(topico)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(topico.id_topico)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
+                          {userRole === "aluno" && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewingTopico(topico)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {topico.status === "enviado" && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingTopico(topico)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleDelete(topico.id_topico)
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </>
+                          )}
                           {userRole === "professor" && (
                             <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewingTopico(topico)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -204,7 +224,7 @@ const TopicosDialog = ({
                                     handleStatusChange(topico, "visto")
                                   }
                                 >
-                                  <Eye className="h-4 w-4" />
+                                  Marcar como visto
                                 </Button>
                               )}
                               {topico.status === "visto" && (
@@ -216,6 +236,7 @@ const TopicosDialog = ({
                                   }
                                 >
                                   <Check className="h-4 w-4 text-green-500" />
+                                  Marcar como revisado
                                 </Button>
                               )}
                             </>
@@ -253,6 +274,43 @@ const TopicosDialog = ({
         description="Tem certeza que deseja excluir este tópico?"
         onConfirm={confirmState.onConfirm}
       />
+
+      <Dialog
+        open={!!viewingTopico}
+        onOpenChange={() => setViewingTopico(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{viewingTopico?.titulo}</DialogTitle>
+            <DialogDescription>
+              Enviado em{" "}
+              {viewingTopico
+                ? new Date(viewingTopico.data_criacao).toLocaleDateString()
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 max-h-[60vh] overflow-y-auto">
+            <p className="text-sm text-muted-foreground">
+              {viewingTopico?.descricao}
+            </p>
+            {viewingTopico?.comentario_professor && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm font-semibold">
+                  Comentário do Professor:
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {viewingTopico?.comentario_professor}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingTopico(null)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!commentingTopico}

@@ -18,8 +18,8 @@ import { Dialog } from "@/components/ui/dialog";
 import ConfirmationDialog from "../reuniao/ConfirmacaoDialog";
 import ReuniaoModal from "../reuniao/ReuniaoModal";
 import TopicosDialog from "../topico/TopicoDialog";
-import ReuniaoSecao from "../reuniao/ReuniaoSecao";
-import TopicosSecao from "../topico/TopicosSecao";
+import ReunioesSection from "../reuniao/ReuniaoSecao";
+import TopicosSection from "../topico/TopicosSecao";
 
 const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -213,12 +213,12 @@ const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
           </div>
         )}
 
-        <TopicosSecao
+        <TopicosSection
           onOpen={() => setTopicosModalOpen(true)}
           newTopicsCount={newTopicsCount}
         />
 
-        <ReuniaoSecao
+        <ReunioesSection
           reunioes={reunioes}
           onOpenCreateModal={handleOpenCreateModal}
           onOpenEditModal={handleOpenEditModal}
