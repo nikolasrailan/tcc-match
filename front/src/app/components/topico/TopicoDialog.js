@@ -119,7 +119,7 @@ const TopicosDialog = ({
 
   return (
     <>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-[90vw]">
         <DialogHeader>
           <DialogTitle>Tópicos da Orientação</DialogTitle>
           <DialogDescription>
@@ -154,9 +154,6 @@ const TopicosDialog = ({
                       <TableRow key={topico.id_topico}>
                         <TableCell className="font-medium">
                           <p>{topico.titulo}</p>
-                          {/* <p className="text-xs text-muted-foreground">
-                            {topico.descricao}
-                          </p> */}
                           {topico.comentario_professor && (
                             <p className="text-xs mt-2 p-2 bg-muted rounded-md">
                               <strong>Prof:</strong>{" "}
@@ -224,7 +221,7 @@ const TopicosDialog = ({
                                     handleStatusChange(topico, "visto")
                                   }
                                 >
-                                  Marcar como visto
+                                  <Eye className="h-4 w-4" />
                                 </Button>
                               )}
                               {topico.status === "visto" && (
@@ -236,7 +233,6 @@ const TopicosDialog = ({
                                   }
                                 >
                                   <Check className="h-4 w-4 text-green-500" />
-                                  Marcar como revisado
                                 </Button>
                               )}
                             </>
@@ -279,7 +275,7 @@ const TopicosDialog = ({
         open={!!viewingTopico}
         onOpenChange={() => setViewingTopico(null)}
       >
-        <DialogContent>
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>{viewingTopico?.titulo}</DialogTitle>
             <DialogDescription>
