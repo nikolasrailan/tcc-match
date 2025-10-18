@@ -16,6 +16,7 @@ const cursoRoutes = require("./cursos/cursoRoutes");
 const areaInteresseRoutes = require("./areaInteresse/areaInteresseRoutes");
 const orientacaoRoutes = require("./orientacao/orientacaoRoutes");
 const reuniaoRoutes = require("./reuniao/reuniaoRoutes");
+const topicoRoutes = require("./topicos/topicoRoutes");
 
 app.use("/usuarios", usuariosRoutes);
 app.use("/login", loginRoutes);
@@ -27,10 +28,9 @@ app.use("/cursos", cursoRoutes);
 app.use("/areas-interesse", areaInteresseRoutes);
 app.use("/orientacoes", orientacaoRoutes);
 app.use("/reunioes", reuniaoRoutes);
+app.use("/topicos", topicoRoutes);
 
 const port = 8000;
 app.listen(port, () => {
   console.log("Servidor escutando na porta " + port);
 });
-
-//teste git

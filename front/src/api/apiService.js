@@ -54,6 +54,24 @@ export const atualizarReuniao = (id_reuniao, data) =>
     body: JSON.stringify(data),
   });
 
+// --- Funções de Tópicos ---
+export const getTopicos = (id_orientacao) =>
+  fetchApi(`/topicos/${id_orientacao}`);
+export const criarTopico = (id_orientacao, data) =>
+  fetchApi(`/topicos/${id_orientacao}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+export const atualizarTopico = (id_topico, data) =>
+  fetchApi(`/topicos/${id_topico}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+export const deletarTopico = (id_topico) =>
+  fetchApi(`/topicos/${id_topico}`, {
+    method: "DELETE",
+  });
+
 // --- Funções de Orientação ---
 export const getOrientacao = () => fetchApi("/orientacoes");
 export const updateOrientacao = (id, data) =>

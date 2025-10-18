@@ -19,6 +19,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "id_orientacao",
         as: "reunioes",
       });
+      // Adicionando associação com Tópicos
+      this.hasMany(models.Topico, {
+        foreignKey: "id_orientacao",
+        as: "topicos",
+      });
     }
   }
   Orientacao.init(
