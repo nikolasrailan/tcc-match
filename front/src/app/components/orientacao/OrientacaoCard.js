@@ -26,7 +26,7 @@ import {
 import { PlusCircle, Edit, Check, FileText } from "lucide-react";
 import ConfirmationDialog from "../reuniao/ConfirmacaoDialog";
 import ReuniaoModal from "../reuniao/ReuniaoModal";
-import TopicosDialog from "../topico/TopicoDialog";
+import TopicosDialog from "@/app/components/topico/TopicosDialog";
 
 const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -233,29 +233,31 @@ const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
           </div>
         )}
 
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setTopicosModalOpen(true)}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            Tópicos
-            {newTopicsCount > 0 && (
-              <Badge className="ml-2">{newTopicsCount}</Badge>
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleOpenCreateModal}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" /> Agendar Reunião
-          </Button>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <Label className="text-lg font-semibold">Tópicos</Label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setTopicosModalOpen(true)}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Ver Tópicos
+              {newTopicsCount > 0 && (
+                <Badge className="ml-2">{newTopicsCount}</Badge>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2">
-          <Label className="text-lg font-semibold">Próximas Reuniões</Label>
+          <div className="flex justify-between items-center">
+            <Label className="text-lg font-semibold">Reuniões</Label>
+            <Button variant="outline" size="sm" onClick={handleOpenCreateModal}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Agendar Reunião
+            </Button>
+          </div>
+
           <div className="border rounded-lg">
             <Table>
               <TableHeader>
@@ -267,55 +269,55 @@ const OrientacaoCard = ({ orientacao, userRole, onUpdate }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reunioes.filter((r) => r.status === "marcada").length > 0 ? (
-                  reunioes
-                    .filter((r) => r.status === "marcada")
-                    .map((reuniao) => (
-                      <TableRow key={reuniao.id_reuniao}>
-                        <TableCell>
-                          {new Date(reuniao.data_horario).toLocaleString(
-                            "pt-BR"
-                          )}
-                        </TableCell>
-                        <TableCell>{reuniao.pauta}</TableCell>
-                        <TableCell>
-                          {renderReuniaoStatusBadge(reuniao.status)}
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleOpenEditModal(reuniao)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              handleReuniaoStatusChange(
-                                reuniao.id_reuniao,
-                                "realizada"
-                              )
-                            }
-                          >
-                            <Check className="h-4 w-4 text-green-600" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() =>
-                              handleReuniaoStatusChange(
-                                reuniao.id_reuniao,
-                                "cancelada"
-                              )
-                            }
-                          >
-                            Cancelar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                {reunioes.length > 0 ? (
+                  reunioes.map((reuniao) => (
+                    <TableRow key={reuniao.id_reuniao}>
+                      <TableCell>
+                        {new Date(reuniao.data_horario).toLocaleString("pt-BR")}
+                      </TableCell>
+                      <TableCell>{reuniao.pauta}</TableCell>
+                      <TableCell>
+                        {renderReuniaoStatusBadge(reuniao.status)}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        {reuniao.status === "marcada" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleOpenEditModal(reuniao)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                handleReuniaoStatusChange(
+                                  reuniao.id_reuniao,
+                                  "realizada"
+                                )
+                              }
+                            >
+                              <Check className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() =>
+                                handleReuniaoStatusChange(
+                                  reuniao.id_reuniao,
+                                  "cancelada"
+                                )
+                              }
+                            >
+                              Cancelar
+                            </Button>
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center h-24">

@@ -1,12 +1,12 @@
 "use client";
 import React, { useState } from "react";
 import {
+  Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,8 +28,9 @@ import {
   Eye,
   Check,
 } from "lucide-react";
-import TopicoForm from "../topico/TopicoForm";
+import TopicoForm from "./TopicoForm";
 import ConfirmationDialog from "../reuniao/ConfirmacaoDialog";
+import { Textarea } from "@/components/ui/textarea";
 
 const TopicosDialog = ({
   orientacao,
