@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Modal, Box, Typography, Alert } from "@mui/material";
+import { toast } from "sonner";
 
 const styleModal = {
   position: "absolute",
@@ -98,7 +99,9 @@ export default function SolicitarOrientacaoPage() {
     setLoading(true);
 
     if (!selectedProfessor || !selectedIdeia) {
-      setError("Por favor, selecione um professor e uma ideia.");
+      const msg = "Por favor, selecione um professor e uma ideia.";
+      setError(msg);
+      toast.error(msg);
       setLoading(false);
       return;
     }
@@ -110,16 +113,17 @@ export default function SolicitarOrientacaoPage() {
       });
 
       if (result) {
-        setSuccess("Solicitação enviada com sucesso!");
-        fetchData(); // Re-fetch data to update the table
+        toast.success("Solicitação enviada com sucesso!");
+        fetchData();
         setSelectedIdeia("");
         setSelectedProfessor("");
       }
     } catch (err) {
-      setError(
+      const msg =
         err.message ||
-          "Não foi possível enviar a solicitação. Verifique se já não existe uma solicitação para esta ideia ou alguma pendente."
-      );
+        "Não foi possível enviar a solicitação. Verifique se já não existe uma solicitação para esta ideia ou alguma pendente.";
+      setError(msg);
+      toast.error("Erro ao enviar solicitação", { description: msg });
     } finally {
       setLoading(false);
     }
@@ -143,10 +147,10 @@ export default function SolicitarOrientacaoPage() {
       solicitacaoToCancel.id_solicitacao
     );
     if (result) {
-      setSuccess("Solicitação cancelada com sucesso!");
+      toast.success("Solicitação cancelada com sucesso!");
       fetchData();
     } else {
-      setError("Não foi possível cancelar a solicitação.");
+      toast.error("Não foi possível cancelar a solicitação.");
     }
     setLoading(false);
     handleCloseCancelModal();

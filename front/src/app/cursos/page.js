@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export default function CursosPage() {
   useAuthRedirect();
@@ -72,11 +73,12 @@ export default function CursosPage() {
     }
     try {
       await criarCurso({ nome: novoCursoNome });
-      setSuccess("Curso criado com sucesso!");
+      toast.success("Curso criado com sucesso!");
       setModalOpen(false);
       fetchCursos();
     } catch (err) {
       setError(err.message || "Erro ao criar curso.");
+      toast.error(err.message || "Erro ao atualizar curso.");
     }
   };
 
@@ -91,24 +93,33 @@ export default function CursosPage() {
     }
     try {
       await atualizarCurso(cursoEmEdicao.id_curso, { nome: novoCursoNome });
-      setSuccess("Curso atualizado com sucesso!");
+      toast.success("Curso criado com sucesso!");
       setEditModalOpen(false);
       fetchCursos();
     } catch (err) {
       setError(err.message || "Erro ao atualizar curso.");
+      toast.error(err.message || "Erro ao atualizar curso.");
     }
   };
 
   const handleDeleteCurso = async (cursoId) => {
-    if (window.confirm("Tem certeza que deseja deletar este curso?")) {
-      try {
-        await deletarCurso(cursoId);
-        setSuccess("Curso deletado com sucesso!");
-        fetchCursos();
-      } catch (err) {
-        setError(err.message || "Erro ao deletar curso.");
-      }
-    }
+    toast("Tem certeza que deseja deletar este curso?", {
+      action: {
+        label: "Deletar",
+        onClick: async () => {
+          try {
+            await deletarCurso(cursoId);
+            toast.success("Curso deletado com sucesso!");
+            fetchCursos();
+          } catch (err) {
+            toast.error(err.message || "Erro ao deletar curso.");
+          }
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+      },
+    });
   };
 
   if (loading) {

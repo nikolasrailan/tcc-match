@@ -31,6 +31,7 @@ import {
   Button as MuiButton,
 } from "@mui/material";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function PerfilPage() {
   useAuthRedirect();
@@ -126,7 +127,7 @@ export default function PerfilPage() {
     try {
       const result = await updateUsuario(user.id_usuario, dataToUpdate);
       if (result && result.user) {
-        setSuccess("Perfil atualizado com sucesso!");
+        toast.success("Usuario atualizado com sucesso!");
         localStorage.setItem("user", JSON.stringify(result.user));
         setUser(result.user);
       } else {
@@ -134,6 +135,7 @@ export default function PerfilPage() {
       }
     } catch (err) {
       setError(err.message || "Ocorreu um erro ao atualizar o perfil.");
+      toast.error(err.message || "Erro ao atualizar usuario.");
     } finally {
       setLoading(false);
     }
@@ -150,7 +152,7 @@ export default function PerfilPage() {
     setSuccess("");
     try {
       await sugerirAreaInteresse({ nome: novaSugestao });
-      setSuccess("Sugestão enviada para aprovação do administrador!");
+      toast.success("Sugestão enviada para aprovação do administrador!");
       setIsSuggestingArea(false);
       setNovaSugestao("");
     } catch (err) {

@@ -4,6 +4,7 @@ import LoginRegisterForm from "@/app/components/login/LoginRegisterForm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function UsuarioCriar() {
   const { login } = useAuth();
@@ -23,7 +24,9 @@ export default function UsuarioCriar() {
       });
 
       if (registerResponse.ok) {
-        setSuccess("Usuário registrado com sucesso! Fazendo login...");
+        toast.success("Usuário registrado com sucesso!", {
+          description: "Fazendo login...",
+        });
         await login(formData.email, formData.senha);
       } else {
         const errorData = await registerResponse.json();
@@ -32,15 +35,23 @@ export default function UsuarioCriar() {
             .map((err) => err.msg)
             .join("\n");
           setError(`Erro ao criar usuário:\n${errorMessages}`);
+          toast.error("Erro ao criar usuário", {
+            description: errorMessages,
+          });
         } else {
           setError(
             errorData.error || "Erro ao criar usuário. Tente novamente."
+          );
+          toast.error(
+            "Erro ao criar usuário",
+            { description: errorData.error } || "Tente novamente."
           );
         }
       }
     } catch (error) {
       console.error("Erro ao registrar usuário:", error);
       setError("Erro na conexão com o servidor.");
+      toast.error("Erro na conexão com o servidor.");
     }
   };
 

@@ -28,7 +28,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-
+import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 const SolicitacaoModal = ({ open, onClose, solicitacao, onResponder }) => {
   if (!open || !solicitacao) return null;
@@ -106,12 +106,14 @@ export default function ProfessorDashboardPage() {
       if (data) {
         setDashboardData(data);
       } else {
-        setError(
-          "Não foi possível carregar os dados. Verifique se você tem permissão para aceder a esta página."
-        );
+        const msg =
+          "Não foi possível carregar os dados. Verifique se você tem permissão para aceder a esta página.";
+        setError(msg);
+        toast.error(msg);
       }
     } catch (e) {
       setError(e.message || "Ocorreu um erro de rede.");
+      toast.error(e.message || "Ocorreu um erro de rede.");
     } finally {
       setLoading(false);
     }
@@ -136,13 +138,19 @@ export default function ProfessorDashboardPage() {
     try {
       const result = await responderSolicitacao(id, aceito);
       if (result) {
+        toast.success(
+          `Solicitação ${aceito ? "aceita" : "rejeitada"} com sucesso!`
+        );
         handleCloseModal();
         fetchData();
       } else {
-        setError("Ocorreu um erro ao responder à solicitação.");
+        const msg = "Ocorreu um erro ao responder à solicitação.";
+        setError(msg);
+        toast.error(msg);
       }
     } catch (err) {
       setError(err.message);
+      toast.error(err.message);
     }
   };
 

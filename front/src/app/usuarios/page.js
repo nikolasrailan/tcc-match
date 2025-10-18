@@ -59,6 +59,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 export default function UsuariosPage() {
   useAuthRedirect(); // Protege a rota
@@ -161,11 +162,12 @@ export default function UsuariosPage() {
 
     setLoading(false);
     if (result) {
-      setSuccess(`Perfil criado com sucesso!`);
+      toast.success("Perfil criado com sucesso!");
       closeModal();
       fetchData();
     } else {
       setError(`Erro ao criar perfil.`);
+      toast.error(`Erro ao criar perfil.`);
     }
   };
 
@@ -187,22 +189,23 @@ export default function UsuariosPage() {
     setLoading(false);
 
     if (result) {
-      setSuccess("Usuário atualizado com sucesso!");
+      toast.success("Usuário atualizado com sucesso!");
       closeModal();
       fetchData();
     } else {
       setError("Ocorreu um erro ao atualizar o usuário.");
+      toast.error("Ocorreu um erro ao atualizar o usuário.");
     }
   };
 
   const handleConfirmDelete = async () => {
     const result = await deleteUsuario(modalState.user.id_usuario);
     if (result) {
-      setSuccess("Usuário desativado com sucesso!");
+      toast.success("Usuário desativado com sucesso!");
       closeModal();
       fetchData();
     } else {
-      setError("Erro ao desativar usuário.");
+      toast.error("Erro ao desativar usuário.");
       closeModal();
     }
   };
@@ -210,26 +213,31 @@ export default function UsuariosPage() {
   const handleRemoveProfile = async (usuario) => {
     let success = false;
     const profileType = usuario.dadosAluno ? "aluno" : "professor";
-    if (
-      confirm(
-        `Tem certeza que deseja remover o perfil de ${profileType} de ${usuario.nome}?`
-      )
-    ) {
-      if (usuario.dadosAluno) {
-        success = await deleteAlunoProfile(usuario.dadosAluno.id_aluno);
-      } else if (usuario.dadosProfessor) {
-        success = await deleteProfessorProfile(
-          usuario.dadosProfessor.id_professor
-        );
-      }
 
-      if (success) {
-        setSuccess("Perfil removido com sucesso!");
-        fetchData();
-      } else {
-        setError("Erro ao remover perfil.");
-      }
-    }
+    toast(`Tem certeza que deseja remover o perfil de ${profileType}?`, {
+      action: {
+        label: "Remover",
+        onClick: async () => {
+          if (usuario.dadosAluno) {
+            success = await deleteAlunoProfile(usuario.dadosAluno.id_aluno);
+          } else if (usuario.dadosProfessor) {
+            success = await deleteProfessorProfile(
+              usuario.dadosProfessor.id_professor
+            );
+          }
+
+          if (success) {
+            toast.success("Perfil removido com sucesso!");
+            fetchData();
+          } else {
+            toast.error("Erro ao remover perfil.");
+          }
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+      },
+    });
   };
 
   const getStatusBadge = (usuario) => {
