@@ -113,7 +113,7 @@ export default function AlunoPage() {
 
   return (
     <div className="container mx-auto py-8 max-w-4xl space-y-8">
-      <h1 className="text-3xl font-bold">Minhas Ideias de TCC</h1>
+      <h1 className="text-3xl font-bold text-center">Minhas Ideias de TCC</h1>
 
       {error && (
         <Alert variant="destructive">

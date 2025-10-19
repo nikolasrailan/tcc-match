@@ -84,7 +84,7 @@ export default function OrientacaoPage() {
 
   return (
     <div className="container mx-auto py-8 space-y-8">
-      <h1 className="text-3xl font-bold">Minhas Orientações</h1>
+      <h1 className="text-3xl font-bold text-center">Minhas Orientações</h1>
 
       {userRole === "professor" && orientacoes && orientacoes.length > 1 ? (
         <>

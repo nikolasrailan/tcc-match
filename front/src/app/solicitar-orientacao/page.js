@@ -227,10 +227,7 @@ export default function SolicitarOrientacaoPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-              {success && <p className="text-green-500 text-sm">{success}</p>}
-            </div>
+            <p></p>
             <Button type="submit" disabled={loading || ideias.length === 0}>
               {loading ? "Enviando..." : "Enviar Solicitação"}
             </Button>

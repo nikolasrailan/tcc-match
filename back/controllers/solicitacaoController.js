@@ -22,6 +22,21 @@ const solicitacaoController = {
           .json({ error: "Apenas alunos podem enviar solicitações." });
       }
 
+      // Verifica se o aluno já tem uma orientação ativa
+      const orientacaoAtiva = await Orientacao.findOne({
+        where: {
+          id_aluno: aluno.id_aluno,
+          status: ["em desenvolvimento", "pausado"],
+        },
+      });
+
+      if (orientacaoAtiva) {
+        return res.status(403).json({
+          error:
+            "Você já possui uma orientação ativa e não pode criar uma nova solicitação.",
+        });
+      }
+
       // Verifica se o aluno já possui alguma solicitação pendente
       const solicitacaoPendenteAluno = await SolicitacaoOrientacao.findOne({
         where: {
