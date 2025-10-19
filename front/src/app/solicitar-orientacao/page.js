@@ -197,14 +197,16 @@ export default function SolicitarOrientacaoPage() {
                   <SelectValue placeholder="Selecione um professor..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {professores.map((prof) => (
-                    <SelectItem
-                      key={prof.id_professor}
-                      value={prof.id_professor.toString()}
-                    >
-                      {prof.usuario.nome}
-                    </SelectItem>
-                  ))}
+                  {professores
+                    .filter((prof) => prof.usuario)
+                    .map((prof) => (
+                      <SelectItem
+                        key={prof.id_professor}
+                        value={prof.id_professor.toString()}
+                      >
+                        {prof.usuario.nome}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

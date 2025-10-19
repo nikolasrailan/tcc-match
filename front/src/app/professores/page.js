@@ -54,42 +54,46 @@ export default function ProfessoresPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {professores.map((prof) => (
-                  <TableRow key={prof.id_professor}>
-                    <TableCell className="font-medium">
-                      {prof.usuario.nome}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {prof.areasDeInteresse &&
-                        prof.areasDeInteresse.length > 0 ? (
-                          prof.areasDeInteresse.map((area) => (
-                            <Badge key={area.id_area} variant="secondary">
-                              {area.nome}
-                            </Badge>
-                          ))
+                {professores
+                  .filter((prof) => prof.usuario)
+                  .map((prof) => (
+                    <TableRow key={prof.id_professor}>
+                      <TableCell className="font-medium">
+                        {prof.usuario.nome}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {prof.areasDeInteresse &&
+                          prof.areasDeInteresse.length > 0 ? (
+                            prof.areasDeInteresse.map((area) => (
+                              <Badge key={area.id_area} variant="secondary">
+                                {area.nome}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500">
+                              Nenhuma
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{prof.usuario.email}</TableCell>
+                      <TableCell>
+                        {prof.orientandos_atuais !== undefined &&
+                        prof.limite_orientacoes
+                          ? `${prof.orientandos_atuais} / ${prof.limite_orientacoes}`
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {prof.disponibilidade &&
+                        prof.orientandos_atuais < prof.limite_orientacoes ? (
+                          <Badge>Disponível</Badge>
                         ) : (
-                          <span className="text-sm text-gray-500">Nenhuma</span>
+                          <Badge variant="destructive">Indisponível</Badge>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{prof.usuario.email}</TableCell>
-                    <TableCell>
-                      {prof.orientandos_atuais !== undefined &&
-                      prof.limite_orientacoes
-                        ? `${prof.orientandos_atuais} / ${prof.limite_orientacoes}`
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {prof.disponibilidade &&
-                      prof.orientandos_atuais < prof.limite_orientacoes ? (
-                        <Badge>Disponível</Badge>
-                      ) : (
-                        <Badge variant="destructive">Indisponível</Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           )}
