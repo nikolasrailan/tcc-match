@@ -18,7 +18,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { deletarTopico, atualizarTopico, criarTopico } from "@/api/apiService";
+import {
+  deletarTopico,
+  atualizarTopico,
+  criarTopico,
+  viewTopico,
+} from "@/api/apiService";
 import { toast } from "sonner";
 import {
   PlusCircle,
@@ -110,6 +115,22 @@ const TopicosDialog = ({
     }
   };
 
+  const handleViewTopico = async (topico) => {
+    // Se o professor abrir um tópico "enviado", ele será marcado como "visto"
+    if (userRole === "professor" && topico.status === "enviado") {
+      try {
+        const updatedTopico = await viewTopico(topico.id_topico);
+        setViewingTopico(updatedTopico);
+        onTopicUpdate(); // Atualiza a lista em segundo plano
+      } catch (error) {
+        toast.error("Erro ao marcar tópico como visto.");
+        setViewingTopico(topico); // Abre o tópico mesmo com erro
+      }
+    } else {
+      setViewingTopico(topico);
+    }
+  };
+
   const getStatusBadge = (status) => {
     if (status === "revisado")
       return <Badge className="bg-green-500">Revisado</Badge>;
@@ -154,12 +175,12 @@ const TopicosDialog = ({
                       <TableRow key={topico.id_topico}>
                         <TableCell className="font-medium">
                           <p>{topico.titulo}</p>
-                          {topico.comentario_professor && (
+                          {/* {topico.comentario_professor && (
                             <p className="text-xs mt-2 p-2 bg-muted rounded-md">
                               <strong>Prof:</strong>{" "}
                               {topico.comentario_professor}
                             </p>
-                          )}
+                          )} */}
                         </TableCell>
                         <TableCell>
                           {new Date(topico.data_criacao).toLocaleDateString()}
@@ -171,7 +192,7 @@ const TopicosDialog = ({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setViewingTopico(topico)}
+                                onClick={() => handleViewTopico(topico)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -202,28 +223,10 @@ const TopicosDialog = ({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setViewingTopico(topico)}
+                                onClick={() => handleViewTopico(topico)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleOpenComment(topico)}
-                              >
-                                <MessageSquare className="h-4 w-4" />
-                              </Button>
-                              {topico.status === "enviado" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleStatusChange(topico, "visto")
-                                  }
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              )}
                               {topico.status === "visto" && (
                                 <Button
                                   variant="ghost"
@@ -301,6 +304,18 @@ const TopicosDialog = ({
             )}
           </div>
           <DialogFooter>
+            {userRole === "professor" && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  handleOpenComment(viewingTopico);
+                  setViewingTopico(null);
+                }}
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Comentar
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setViewingTopico(null)}>
               Fechar
             </Button>

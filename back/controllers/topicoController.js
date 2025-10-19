@@ -1,4 +1,4 @@
-const { Topico, Aluno, Professor, Orientacao } = require("../models");
+const { Topico, Aluno, Professor, Orientacao, Usuario } = require("../models");
 
 const topicoController = {
   async listarTopicos(req, res) {
@@ -39,6 +39,57 @@ const topicoController = {
     } catch (error) {
       console.error("Erro ao criar tópico:", error);
       res.status(500).json({ error: "Erro ao criar tópico." });
+    }
+  },
+
+  async getAndMarkAsRead(req, res) {
+    try {
+      const { id_topico } = req.params;
+      const { id: idUsuario, role } = req.user;
+
+      const topico = await Topico.findByPk(id_topico, {
+        include: {
+          model: Orientacao,
+          as: "orientacao",
+          include: [
+            {
+              model: Aluno,
+              as: "aluno",
+              include: { model: Usuario, as: "dadosUsuario" },
+            },
+            {
+              model: Professor,
+              as: "professor",
+              include: { model: Usuario, as: "usuario" },
+            },
+          ],
+        },
+      });
+
+      if (!topico) {
+        return res.status(404).json({ message: "Tópico não encontrado." });
+      }
+
+      const isProfessorOfOrientacao =
+        role === "professor" &&
+        topico.orientacao?.professor?.id_usuario === idUsuario;
+      const isAlunoOfOrientacao =
+        role === "aluno" &&
+        topico.orientacao?.aluno?.dadosUsuario?.id_usuario === idUsuario;
+
+      if (!isProfessorOfOrientacao && !isAlunoOfOrientacao) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+
+      // Se for o professor e o status for "enviado", atualiza para "visto"
+      if (isProfessorOfOrientacao && topico.status === "enviado") {
+        await topico.update({ status: "visto" });
+      }
+
+      res.status(200).json(topico);
+    } catch (error) {
+      console.error("Erro ao buscar ou marcar tópico como lido:", error);
+      res.status(500).json({ error: "Erro ao processar a requisição." });
     }
   },
 
