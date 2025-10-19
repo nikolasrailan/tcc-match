@@ -34,20 +34,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Modal, Box, Typography, Alert } from "@mui/material";
+import ConfirmationDialog from "../components/reuniao/ConfirmacaoDialog";
 import { toast } from "sonner";
 
 const styleModal = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 400,
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-  display: "flex",
   flexDirection: "column",
   gap: 2,
 };
@@ -62,8 +52,12 @@ export default function SolicitarOrientacaoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [solicitacaoToCancel, setSolicitacaoToCancel] = useState(null);
+  const [confirmationState, setConfirmationState] = useState({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -130,30 +124,27 @@ export default function SolicitarOrientacaoPage() {
   };
 
   const handleOpenCancelModal = (solicitacao) => {
-    setSolicitacaoToCancel(solicitacao);
-    setCancelModalOpen(true);
-  };
+    setConfirmationState({
+      open: true,
+      title: "Confirmar Cancelamento",
+      description: "Tem certeza que deseja cancelar esta solicitação?",
+      confirmText: "Sim, cancelar",
+      confirmVariant: "destructive",
+      onConfirm: async () => {
+        if (!solicitacao) return;
 
-  const handleCloseCancelModal = () => {
-    setSolicitacaoToCancel(null);
-    setCancelModalOpen(false);
-  };
-
-  const handleConfirmCancel = async () => {
-    if (!solicitacaoToCancel) return;
-
-    setLoading(true);
-    const result = await cancelarSolicitacao(
-      solicitacaoToCancel.id_solicitacao
-    );
-    if (result) {
-      toast.success("Solicitação cancelada com sucesso!");
-      fetchData();
-    } else {
-      toast.error("Não foi possível cancelar a solicitação.");
-    }
-    setLoading(false);
-    handleCloseCancelModal();
+        setLoading(true);
+        const result = await cancelarSolicitacao(solicitacao.id_solicitacao);
+        if (result) {
+          toast.success("Solicitação cancelada com sucesso!");
+          fetchData();
+        } else {
+          toast.error("Não foi possível cancelar a solicitação.");
+        }
+        setLoading(false);
+        setConfirmationState({ open: false, onConfirm: () => {} });
+      },
+    });
   };
 
   const getStatusText = (status) => {
@@ -283,8 +274,8 @@ export default function SolicitarOrientacaoPage() {
                     <TableCell>{getStatusText(solicitacao.status)}</TableCell>
                     <TableCell>
                       {solicitacao.status === 0 && (
-                        <a
-                          href="#"
+                        <Button
+                          variant="link"
                           className="text-red-600 p-0 h-auto"
                           onClick={(e) => {
                             e.preventDefault();
@@ -293,7 +284,7 @@ export default function SolicitarOrientacaoPage() {
                           disabled={loading}
                         >
                           Cancelar
-                        </a>
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
@@ -309,24 +300,23 @@ export default function SolicitarOrientacaoPage() {
           </Table>
         </CardContent>
       </Card>
-      <Modal open={cancelModalOpen} onClose={handleCloseCancelModal}>
-        <Box sx={styleModal}>
-          <Typography variant="h6">Confirmar Cancelamento</Typography>
-          <Typography>
-            Tem certeza que deseja cancelar esta solicitação?
-          </Typography>
-          <Box
-            sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}
-          >
-            <Button variant="outline" onClick={handleCloseCancelModal}>
-              Não
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmCancel}>
-              Sim, cancelar
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
+      <ConfirmationDialog
+        open={confirmationState.open}
+        onOpenChange={(isOpen) =>
+          !isOpen &&
+          setConfirmationState({
+            open: false,
+            title: "",
+            description: "",
+            onConfirm: () => {},
+          })
+        }
+        title={confirmationState.title}
+        description={confirmationState.description}
+        onConfirm={confirmationState.onConfirm}
+        confirmText={confirmationState.confirmText}
+        confirmVariant={confirmationState.confirmVariant}
+      />
     </div>
   );
 }
