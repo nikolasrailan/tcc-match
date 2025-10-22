@@ -20,8 +20,13 @@ async function fetchApi(endpoint, options = {}) {
     if (!response.ok) {
       let errorData = { message: response.statusText || "Erro na requisição" };
       if (contentType && contentType.includes("application/json")) {
-        const body = await response.json();
-        errorData.message = body.error || body.message || errorData.message;
+        try {
+          const body = await response.json();
+          errorData.message = body.error || body.message || errorData.message;
+        } catch (e) {
+          // Ignore if response body is not valid JSON
+          errorData.message = `Erro ${response.status}: ${response.statusText}`;
+        }
       }
       throw new Error(errorData.message);
     }
@@ -30,10 +35,26 @@ async function fetchApi(endpoint, options = {}) {
       return { success: true };
     }
 
+    if (
+      response.status === 200 &&
+      (!contentType || !contentType.includes("application/json"))
+    ) {
+      try {
+        const textResponse = await response.text();
+        if (textResponse) {
+          return { message: textResponse };
+        }
+        return { success: true };
+      } catch (e) {
+        return { success: true };
+      }
+    }
+
     if (contentType && contentType.includes("application/json")) {
       return await response.json();
     }
-    return { success: true };
+
+    return { success: true, status: response.status };
   } catch (error) {
     console.error(`Erro na chamada da API para ${endpoint}:`, error.message);
     throw error;
@@ -54,7 +75,7 @@ export const atualizarReuniao = (id_reuniao, data) =>
     body: JSON.stringify(data),
   });
 
-/// --- Funções de Tópicos ---
+// --- Funções de Tópicos ---
 export const getTopicos = (id_orientacao) =>
   fetchApi(`/topicos/${id_orientacao}`);
 export const viewTopico = (id_topico) => fetchApi(`/topicos/${id_topico}/view`);
@@ -79,6 +100,17 @@ export const updateOrientacao = (id, data) =>
   fetchApi(`/orientacoes/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
+  });
+
+// Novas funções para cancelamento
+export const solicitarCancelamentoOrientacao = (id) =>
+  fetchApi(`/orientacoes/${id}/solicitar-cancelamento`, {
+    method: "PATCH",
+  });
+export const confirmarCancelamentoOrientacao = (id, feedback = null) =>
+  fetchApi(`/orientacoes/${id}/confirmar-cancelamento`, {
+    method: "PATCH",
+    body: JSON.stringify({ feedback_cancelamento: feedback }),
   });
 
 // --- Funções de Usuários ---

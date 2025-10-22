@@ -19,7 +19,6 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "id_orientacao",
         as: "reunioes",
       });
-      // Adicionando associação com Tópicos
       this.hasMany(models.Topico, {
         foreignKey: "id_orientacao",
         as: "topicos",
@@ -47,16 +46,26 @@ module.exports = (sequelize, DataTypes) => {
           "em desenvolvimento",
           "finalizado",
           "cancelado",
-          "pausado"
+          "pausado",
+          "encerrado"
         ),
         allowNull: false,
         defaultValue: "em desenvolvimento",
+      },
+      solicitacao_cancelamento: {
+        type: DataTypes.ENUM("nenhuma", "aluno", "professor"),
+        allowNull: false,
+        defaultValue: "nenhuma",
       },
       url_projeto: {
         type: DataTypes.STRING,
         allowNull: true,
       },
       observacoes: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      feedback_cancelamento: {
         type: DataTypes.TEXT,
         allowNull: true,
       },
