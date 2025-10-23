@@ -1,14 +1,8 @@
 "use client";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { getOrientacao, updateOrientacao } from "@/api/apiService";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import OrientacaoCard from "../components/orientacao/OrientacaoCard";
 import OrientacaoTabs from "../components/orientacao/OrientacaoTabs"; // Para professor com múltiplas ativas
@@ -17,82 +11,76 @@ import { Separator } from "@/components/ui/separator"; // Para separar ativas de
 export default function OrientacaoPage() {
   useAuthRedirect();
 
-  const [allOrientacoes, setAllOrientacoes] = useState([]);
+  const [orientacoesAtivas, setOrientacoesAtivas] = useState([]);
+  const [orientacoesInativas, setOrientacoesInativas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [selectedActiveIndex, setSelectedActiveIndex] = useState(0);
+  const [selectedAtivaIndex, setSelectedAtivaIndex] = useState(0);
 
   const fetchData = useCallback(async () => {
     setError(null);
     try {
-      // Determina userRole antes de buscar dados
-      const storedUser = localStorage.getItem("user");
       let role = null;
+      const storedUser = localStorage.getItem("user");
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         if (parsedUser.dadosAluno) role = "aluno";
         if (parsedUser.dadosProfessor) role = "professor";
-      }
-      setUserRole(role); // Define o role no estado
-
-      if (!role) {
+        setUserRole(role);
+      } else {
         setLoading(false);
-        setAllOrientacoes([]);
-        return; // Sai se não for aluno nem professor
+        setOrientacoesAtivas([]);
+        setOrientacoesInativas([]);
+        return;
       }
 
-      const data = await getOrientacao(); // API agora retorna todas
-      setAllOrientacoes(Array.isArray(data) ? data : []);
+      const todasOrientacoes = await getOrientacao();
+      const ativas = [];
+      const inativas = [];
+
+      if (Array.isArray(todasOrientacoes)) {
+        todasOrientacoes.forEach((o) => {
+          if (["encerrado", "cancelado"].includes(o.status)) {
+            inativas.push(o);
+          } else {
+            // Inclui 'em desenvolvimento', 'pausado', 'finalizado' e solicitações pendentes
+            ativas.push(o);
+          }
+        });
+      }
+
+      setOrientacoesAtivas(ativas);
+      setOrientacoesInativas(inativas);
+
+      // Ajusta o índice selecionado se ele ficar inválido após a atualização
+      if (selectedAtivaIndex >= ativas.length) {
+        setSelectedAtivaIndex(0);
+      }
     } catch (e) {
       setError(
         e.message || "Ocorreu um erro ao buscar os dados da orientação."
       );
-      setAllOrientacoes([]);
+      setOrientacoesAtivas([]);
+      setOrientacoesInativas([]);
     } finally {
-      // Garante que setLoading só seja false após a primeira tentativa de busca
+      // Garante que setLoading(false) só seja chamado uma vez no final
       if (loading) setLoading(false);
     }
-  }, [loading]); // Adiciona loading como dependência para evitar loop inicial
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAtivaIndex]); // Remove 'loading' das dependências para evitar loop
 
   useEffect(() => {
-    // Busca inicial
-    setLoading(true);
+    setLoading(true); // Define loading como true no início do carregamento
     fetchData();
-  }, []); // Executa apenas uma vez no mount
-
-  // Filtra as orientações em ativas e inativas
-  const { activeOrientations, inactiveOrientations } = useMemo(() => {
-    const active = [];
-    const inactive = [];
-    const activeStatuses = ["em desenvolvimento", "pausado"];
-
-    allOrientacoes.forEach((o) => {
-      // Considera também se há solicitação de cancelamento pendente como "ativa" visualmente
-      if (
-        activeStatuses.includes(o.status) ||
-        o.solicitacao_cancelamento !== "nenhuma"
-      ) {
-        active.push(o);
-      } else {
-        inactive.push(o);
-      }
-    });
-    return { activeOrientations: active, inactiveOrientations: inactive };
-  }, [allOrientacoes]);
-
-  // Ajusta o índice selecionado se a lista de ativas mudar
-  useEffect(() => {
-    if (selectedActiveIndex >= activeOrientations.length) {
-      setSelectedActiveIndex(Math.max(0, activeOrientations.length - 1));
-    }
-  }, [activeOrientations, selectedActiveIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Executa apenas na montagem inicial
 
   const handleUpdateDetails = async (id, data) => {
-    setLoading(true); // Mostra loading durante a atualização
+    setLoading(true);
     try {
       await updateOrientacao(id, data);
-      await fetchData(); // Rebusca TUDO para garantir consistência
+      await fetchData(); // Recarrega os dados após a atualização
     } catch (err) {
       setError(err.message || "Falha ao atualizar a orientação.");
     } finally {
@@ -100,10 +88,9 @@ export default function OrientacaoPage() {
     }
   };
 
-  // Função chamada após cancelamento (solicitado ou direto) ser bem sucedido
   const handleCancelSuccess = async () => {
     setLoading(true);
-    await fetchData(); // Rebusca todas as orientações
+    await fetchData(); // Recarrega os dados após cancelamento/encerramento
   };
 
   if (loading) {
@@ -130,14 +117,17 @@ export default function OrientacaoPage() {
             <CardTitle>Acesso Negado</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Você precisa estar logado como aluno ou professor.</p>
+            <p>
+              Você precisa estar logado como aluno ou professor para ver esta
+              página.
+            </p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  if (allOrientacoes.length === 0) {
+  if (orientacoesAtivas.length === 0 && orientacoesInativas.length === 0) {
     return (
       <div className="container mx-auto py-8 text-center">
         <Card className="max-w-md mx-auto">
@@ -145,7 +135,7 @@ export default function OrientacaoPage() {
             <CardTitle>Nenhuma Orientação</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Você não possui nenhuma orientação (ativa ou encerrada).</p>
+            <p>Você não possui nenhuma orientação ativa ou anterior.</p>
             {userRole === "aluno" && (
               <p className="mt-2 text-sm text-muted-foreground">
                 Você pode solicitar uma na página "Solicitar Orientação".
@@ -157,22 +147,29 @@ export default function OrientacaoPage() {
     );
   }
 
-  // Garante que o índice ativo é válido
-  const currentActiveOrientacao = activeOrientations[selectedActiveIndex];
+  // Garante que selectedAtivaIndex é válido para orientações ativas
+  const currentActiveIndex = Math.max(
+    0,
+    Math.min(selectedAtivaIndex, orientacoesAtivas.length - 1)
+  );
+  const currentActiveOrientacao = orientacoesAtivas[currentActiveIndex];
 
   return (
     <div className="container mx-auto py-8 space-y-8">
       <h1 className="text-3xl font-bold text-center">Minhas Orientações</h1>
 
       {/* Seção de Orientações Ativas */}
-      {activeOrientations.length > 0 ? (
+      {orientacoesAtivas.length > 0 ? (
         <>
-          {userRole === "professor" && activeOrientations.length > 1 ? (
+          <h2 className="text-xl font-semibold text-center text-primary">
+            Orientações Ativas
+          </h2>
+          {userRole === "professor" && orientacoesAtivas.length > 1 ? (
             <>
               <OrientacaoTabs
-                orientacoes={activeOrientations}
-                selectedIndex={selectedActiveIndex}
-                onSelect={setSelectedActiveIndex}
+                orientacoes={orientacoesAtivas}
+                selectedIndex={currentActiveIndex}
+                onSelect={setSelectedAtivaIndex}
               />
               {currentActiveOrientacao && (
                 <OrientacaoCard
@@ -185,7 +182,6 @@ export default function OrientacaoPage() {
               )}
             </>
           ) : (
-            // Aluno ou Professor com apenas uma ativa
             currentActiveOrientacao && (
               <OrientacaoCard
                 key={currentActiveOrientacao.id_orientacao}
@@ -198,32 +194,26 @@ export default function OrientacaoPage() {
           )}
         </>
       ) : (
-        <Card className="max-w-md mx-auto border-dashed">
-          <CardHeader className="text-center">
-            <CardTitle className="text-lg font-normal text-muted-foreground">
-              Nenhuma Orientação Ativa
-            </CardTitle>
-          </CardHeader>
-        </Card>
+        <p className="text-center text-muted-foreground">
+          Nenhuma orientação ativa no momento.
+        </p>
       )}
 
-      {/* Seção de Orientações Inativas (Encerradas/Finalizadas) */}
-      {inactiveOrientations.length > 0 && (
+      {/* Separador e Seção de Orientações Anteriores */}
+      {orientacoesInativas.length > 0 && (
         <>
-          {activeOrientations.length > 0 && <Separator className="my-8" />}{" "}
-          {/* Separador visual */}
-          <h2 className="text-2xl font-semibold text-center text-muted-foreground">
+          <Separator className="my-8" />
+          <h2 className="text-xl font-semibold text-center text-muted-foreground">
             Orientações Anteriores
           </h2>
           <div className="space-y-6">
-            {inactiveOrientations.map((orientacao) => (
+            {orientacoesInativas.map((orientacao) => (
               <OrientacaoCard
                 key={orientacao.id_orientacao}
                 orientacao={orientacao}
                 userRole={userRole}
-                onUpdate={() => {}} // Não permite update em inativas
-                onCancelSuccess={() => {}} // Não permite cancelamento em inativas
-                isInactive={true} // Marca como inativa
+                onUpdate={handleUpdateDetails}
+                onCancelSuccess={handleCancelSuccess} // Passa a função aqui também, caso necessário
               />
             ))}
           </div>
