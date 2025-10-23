@@ -18,18 +18,23 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge"; // Importa o Badge do shadcn
 import {
-  Box,
-  Chip,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  OutlinedInput,
-  Select as MuiSelect,
-  Typography,
-  TextField,
-  Button as MuiButton,
-} from "@mui/material";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; // Importa DropdownMenu do shadcn
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // Mantém o Select do shadcn para Disponibilidade
+import { TextField, Box } from "@mui/material"; // Remove Button as MuiButton import
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,6 +51,7 @@ export default function PerfilPage() {
   const [novaSugestao, setNovaSugestao] = useState("");
 
   const fetchInitialData = useCallback(async () => {
+    // ... existing fetchInitialData code ...
     if (typeof window !== "undefined") {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
@@ -59,8 +65,8 @@ export default function PerfilPage() {
             matricula: parsedUser.dadosAluno?.matricula || "",
             curso: parsedUser.dadosAluno?.cursoInfo?.nome || "",
             disponibilidade: parsedUser.dadosProfessor?.disponibilidade
-              ? "disponivel"
-              : "indisponivel",
+              ? "1" // Usar string "1" para disponível
+              : "0", // Usar string "0" para indisponível
             areasDeInteresse:
               parsedUser.dadosProfessor?.areasDeInteresse?.map(
                 (a) => a.id_area
@@ -70,11 +76,10 @@ export default function PerfilPage() {
           };
           setFormData(initialFormData);
 
-          if (parsedUser.dadosProfessor) {
-            const areasData = await getAreasInteresse();
-            if (areasData) {
-              setAllAreas(areasData);
-            }
+          // Busca áreas apenas se for professor ou para o form de sugestão
+          const areasData = await getAreasInteresse();
+          if (areasData) {
+            setAllAreas(areasData);
           }
         } catch (e) {
           console.error("Falha ao carregar dados do perfil", e);
@@ -92,11 +97,28 @@ export default function PerfilPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (value, name) => {
+    // Para o select de disponibilidade
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleAreaChange = (areaId) => {
+    // Para o DropdownMenuCheckboxItem
+    setFormData((prev) => {
+      const newAreas = prev.areasDeInteresse.includes(areaId)
+        ? prev.areasDeInteresse.filter((id) => id !== areaId)
+        : [...prev.areasDeInteresse, areaId];
+      return { ...prev, areasDeInteresse: newAreas };
+    });
+  };
+
+  // Função para prevenir o fechamento do dropdown ao selecionar um item
+  const handleSelect = (event) => {
+    event.preventDefault();
+  };
+
   const handleSubmit = async (e) => {
+    // ... existing handleSubmit code ...
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -115,23 +137,44 @@ export default function PerfilPage() {
 
     if (user.dadosAluno) {
       dataToUpdate.matricula = formData.matricula;
+      // Não incluímos id_curso aqui pois ele é apenas exibido e não editável neste form
     }
 
     if (user.dadosProfessor) {
-      dataToUpdate.disponibilidade =
-        formData.disponibilidade === "disponivel" ? 1 : 0;
+      dataToUpdate.disponibilidade = formData.disponibilidade === "1" ? 1 : 0; // Converte string para 0 ou 1
       dataToUpdate.areasDeInteresse = formData.areasDeInteresse;
-      dataToUpdate.limite_orientacoes = formData.limite_orientacoes;
+      dataToUpdate.limite_orientacoes = parseInt(
+        formData.limite_orientacoes,
+        10
+      ); // Garante que é número
     }
 
     try {
       const result = await updateUsuario(user.id_usuario, dataToUpdate);
       if (result && result.user) {
         toast.success("Usuario atualizado com sucesso!");
-        localStorage.setItem("user", JSON.stringify(result.user));
-        setUser(result.user);
+        localStorage.setItem("user", JSON.stringify(result.user)); // Atualiza localStorage
+        setUser(result.user); // Atualiza estado local
+        // Recarrega os dados do formulário a partir do usuário atualizado
+        setFormData({
+          nome: result.user.nome || "",
+          email: result.user.email || "",
+          matricula: result.user.dadosAluno?.matricula || "",
+          curso: result.user.dadosAluno?.cursoInfo?.nome || "",
+          disponibilidade: result.user.dadosProfessor?.disponibilidade
+            ? "1"
+            : "0",
+          areasDeInteresse:
+            result.user.dadosProfessor?.areasDeInteresse?.map(
+              (a) => a.id_area
+            ) || [],
+          limite_orientacoes:
+            result.user.dadosProfessor?.limite_orientacoes || 5,
+        });
       } else {
-        throw new Error("Ocorreu um erro ao atualizar o perfil.");
+        throw new Error(
+          result.message || "Ocorreu um erro ao atualizar o perfil."
+        );
       }
     } catch (err) {
       setError(err.message || "Ocorreu um erro ao atualizar o perfil.");
@@ -142,7 +185,10 @@ export default function PerfilPage() {
   };
 
   const handleSugestaoSubmit = async (e) => {
-    e.preventDefault();
+    // Prevent default form submission if called via button click
+    if (e) e.preventDefault();
+
+    // ... rest of the existing handleSugestaoSubmit code ...
     if (!novaSugestao.trim()) {
       setError("O nome da área não pode ser vazio.");
       return;
@@ -156,11 +202,18 @@ export default function PerfilPage() {
       setIsSuggestingArea(false);
       setNovaSugestao("");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Erro ao enviar sugestão.");
+      toast.error(err.message || "Erro ao enviar sugestão.");
     } finally {
       setLoading(false);
     }
   };
+
+  // Nomes das áreas selecionadas para exibição no botão
+  const selectedAreaNames =
+    formData.areasDeInteresse
+      ?.map((id) => allAreas.find((area) => area.id_area === id)?.nome)
+      .filter(Boolean) || [];
 
   if (!user) {
     return (
@@ -178,8 +231,11 @@ export default function PerfilPage() {
           <CardDescription>Atualize suas informações.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
+          {" "}
+          {/* Outer form */}
           <CardContent className="space-y-4">
             {/* Campos comuns */}
+            {/* ... Nome, Email ... */}
             <div className="space-y-2">
               <Label htmlFor="nome">Nome</Label>
               <Input
@@ -200,6 +256,7 @@ export default function PerfilPage() {
               />
             </div>
             {/* Campos Aluno */}
+            {/* ... Matricula, Curso ... */}
             {user.dadosAluno && (
               <>
                 <div className="space-y-2">
@@ -217,7 +274,7 @@ export default function PerfilPage() {
                     id="curso"
                     name="curso"
                     value={formData.curso || ""}
-                    disabled
+                    disabled // Curso não é editável aqui
                   />
                 </div>
               </>
@@ -226,39 +283,45 @@ export default function PerfilPage() {
             {user.dadosProfessor && (
               <>
                 <div className="space-y-2">
-                  <Label className="mt-2">Editar Áreas de Interesse</Label>
-                  <FormControl fullWidth>
-                    <InputLabel id="areas-label">Áreas</InputLabel>
-                    <MuiSelect
-                      labelId="areas-label"
-                      multiple
-                      value={formData.areasDeInteresse || []}
-                      onChange={(e) =>
-                        handleSelectChange("areasDeInteresse", e.target.value)
-                      }
-                      input={<OutlinedInput label="Áreas" />}
-                      renderValue={(selected) => (
-                        <Box
-                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
-                        >
-                          {selected.map((value) => {
-                            const area = allAreas.find(
-                              (a) => a.id_area === value
-                            );
-                            return (
-                              <Chip key={value} label={area ? area.nome : ""} />
-                            );
-                          })}
-                        </Box>
-                      )}
-                    >
+                  <Label>Áreas de Interesse</Label>
+                  {/* ... DropdownMenu ... */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal h-auto min-h-9" // Ajuste de altura
+                      >
+                        {selectedAreaNames.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedAreaNames.map((name) => (
+                              <Badge key={name} variant="secondary">
+                                {name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span>Selecione as áreas</span>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                      <DropdownMenuLabel>Áreas disponíveis</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
                       {allAreas.map((area) => (
-                        <MenuItem key={area.id_area} value={area.id_area}>
+                        <DropdownMenuCheckboxItem
+                          key={area.id_area}
+                          checked={formData.areasDeInteresse?.includes(
+                            area.id_area
+                          )}
+                          onCheckedChange={() => handleAreaChange(area.id_area)}
+                          onSelect={handleSelect} // Adicionado para prevenir fechamento
+                        >
                           {area.nome}
-                        </MenuItem>
+                        </DropdownMenuCheckboxItem>
                       ))}
-                    </MuiSelect>
-                  </FormControl>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {/* Link para sugerir área */}
                   <span
                     onClick={() => setIsSuggestingArea(!isSuggestingArea)}
                     style={{
@@ -271,12 +334,15 @@ export default function PerfilPage() {
                     }}
                   >
                     {isSuggestingArea
-                      ? "Cancelar"
+                      ? "Cancelar Sugestão"
                       : "Não encontrou uma área? Sugira uma nova."}
                   </span>
 
+                  {/* Formulário de sugestão - Alterado component para "div" */}
                   {isSuggestingArea && (
                     <Box
+                      component="div" // MUDANÇA: Alterado de "form" para "div"
+                      // removido onSubmit daqui
                       sx={{
                         pt: 1,
                         display: "flex",
@@ -294,30 +360,38 @@ export default function PerfilPage() {
                         required
                         fullWidth
                       />
+                      {/* MUDANÇA: Alterado type para "button" e adicionado onClick */}
                       <Button
-                        onClick={handleSugestaoSubmit}
-                        variant="contained"
-                        size="small"
+                        type="button"
+                        variant="default"
+                        size="sm"
                         disabled={loading}
+                        onClick={handleSugestaoSubmit} // Aciona a submissão no clique
                       >
                         Enviar
                       </Button>
                     </Box>
                   )}
                 </div>
+                {/* ... Disponibilidade, Limite Orientandos ... */}
+                {/* Select de Disponibilidade (usando shadcn Select) */}
                 <div className="space-y-2">
                   <Label>Disponibilidade</Label>
-                  <MuiSelect
+                  <Select
                     name="disponibilidade"
                     value={formData.disponibilidade}
-                    onChange={(e) =>
-                      handleSelectChange("disponibilidade", e.target.value)
+                    onValueChange={(value) =>
+                      handleSelectChange(value, "disponibilidade")
                     }
-                    fullWidth
                   >
-                    <MenuItem value="disponivel">Disponível</MenuItem>
-                    <MenuItem value="indisponivel">Indisponível</MenuItem>
-                  </MuiSelect>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Disponível</SelectItem>
+                      <SelectItem value="0">Indisponível</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="limite_orientacoes">
@@ -329,6 +403,7 @@ export default function PerfilPage() {
                     type="number"
                     value={formData.limite_orientacoes || ""}
                     onChange={handleChange}
+                    min="0" // Adiciona um mínimo
                   />
                 </div>
               </>
@@ -340,10 +415,12 @@ export default function PerfilPage() {
               {success && <p className="text-green-500 text-sm">{success}</p>}
             </div>
             <Button type="submit" disabled={loading} className="mt-2">
-              {loading ? "Salvando..." : "Salvar Alterações"}
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar Alterações
             </Button>
           </CardFooter>
-        </form>
+        </form>{" "}
+        {/* Fim Outer form */}
       </Card>
     </div>
   );

@@ -11,13 +11,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -53,6 +46,10 @@ export default function IdeiaTccForm({
         : [...prev.areasDeInteresse, areaId];
       return { ...prev, areasDeInteresse: newAreas };
     });
+  };
+
+  const handleSelect = (event) => {
+    event.preventDefault();
   };
 
   const handleSubmit = (e) => {
@@ -102,7 +99,7 @@ export default function IdeiaTccForm({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left font-normal"
+                  className="w-full justify-start text-left font-normal h-auto min-h-9" // Ajuste de altura
                 >
                   {selectedAreaNames.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
@@ -125,6 +122,7 @@ export default function IdeiaTccForm({
                     key={area.id_area}
                     checked={formData.areasDeInteresse.includes(area.id_area)}
                     onCheckedChange={() => handleAreaChange(area.id_area)}
+                    onSelect={handleSelect} // Adicionado para prevenir fechamento
                   >
                     {area.nome}
                   </DropdownMenuCheckboxItem>
