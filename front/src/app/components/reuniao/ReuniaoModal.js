@@ -11,6 +11,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { criarReuniao, atualizarReuniao } from "@/api/apiService";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format, setHours, setMinutes, parseISO, isValid } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const ReuniaoModal = ({
   orientacaoId,
@@ -18,43 +29,64 @@ const ReuniaoModal = ({
   initialData = null,
   onClose,
 }) => {
-  const [dataHorario, setDataHorario] = useState("");
+  const [selectedDate, setSelectedDate] = useState(undefined);
+  const [selectedTime, setSelectedTime] = useState("");
   const [pauta, setPauta] = useState("");
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (initialData) {
-      // Formata a data para o input datetime-local (YYYY-MM-DDTHH:mm)
-      const formattedDate = new Date(initialData.data_horario)
-        .toISOString()
-        .slice(0, 16);
-      setDataHorario(formattedDate);
+      const initialDate = parseISO(initialData.data_horario);
+      if (isValid(initialDate)) {
+        setSelectedDate(initialDate);
+        setSelectedTime(format(initialDate, "HH:mm"));
+      }
       setPauta(initialData.pauta || "");
     } else {
-      setDataHorario("");
+      setSelectedDate(undefined);
+      setSelectedTime("");
       setPauta("");
     }
   }, [initialData]);
 
+  const handleDateSelect = (date) => {
+    setSelectedDate(date);
+    setPopoverOpen(false);
+  };
+
   const handleSubmit = async () => {
-    if (!dataHorario) {
-      alert("Por favor, selecione data e hora.");
+    if (!selectedDate || !selectedTime) {
+      toast.error("Por favor, selecione data e hora.");
       return;
     }
+
+    const [hours, minutes] = selectedTime.split(":").map(Number);
+    let combinedDate = setHours(selectedDate, hours);
+    combinedDate = setMinutes(combinedDate, minutes);
+
+    // Formata para "YYYY-MM-DDTHH:mm:ss" (sem 'Z')
+    const localISOString = format(combinedDate, "yyyy-MM-dd'T'HH:mm:ss");
+
     const reuniaoData = {
-      data_horario: dataHorario,
+      data_horario: localISOString,
       pauta,
     };
 
     try {
       if (initialData) {
         await atualizarReuniao(initialData.id_reuniao, reuniaoData);
+        toast.success("Reunião atualizada com sucesso!");
       } else {
         await criarReuniao(orientacaoId, reuniaoData);
+        toast.success("Reunião agendada com sucesso!");
       }
       onSave();
     } catch (error) {
       console.error("Failed to save meeting:", error);
-      alert(`Erro ao salvar reunião: ${error.message}`);
+      // Substitui o alert pelo toast.error
+      toast.error("Erro ao salvar reunião", {
+        description: error.message,
+      });
     }
   };
 
@@ -66,14 +98,45 @@ const ReuniaoModal = ({
         </DialogTitle>
       </DialogHeader>
       <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="data_horario">Data e Hora</Label>
-          <Input
-            id="data_horario"
-            type="datetime-local"
-            value={dataHorario}
-            onChange={(e) => setDataHorario(e.target.value)}
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Data</Label>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? (
+                    format(selectedDate, "PPP", { locale: ptBR })
+                  ) : (
+                    <span>Escolha uma data</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="time">Hora</Label>
+            <Input
+              id="time"
+              type="time"
+              value={selectedTime}
+              onChange={(e) => setSelectedTime(e.target.value)}
+            />
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="pauta">Pauta/Assunto</Label>
