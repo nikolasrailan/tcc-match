@@ -112,6 +112,12 @@ export const confirmarCancelamentoOrientacao = (id, feedback = null) =>
     method: "PATCH",
     body: JSON.stringify({ feedback_cancelamento: feedback }),
   });
+// Função para cancelamento direto pelo professor
+export const cancelarOrientacaoDiretoProfessor = (id, feedback = null) =>
+  fetchApi(`/orientacoes/${id}/cancelar-direto`, {
+    method: "PATCH",
+    body: JSON.stringify({ feedback_cancelamento: feedback }),
+  });
 
 // --- Funções de Usuários ---
 export const getUsuarios = () => fetchApi("/usuarios");

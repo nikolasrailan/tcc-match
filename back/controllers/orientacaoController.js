@@ -19,7 +19,6 @@ const orientacaoController = {
         if (aluno) {
           where.id_aluno = aluno.id_aluno;
         } else {
-          // Se não encontrou aluno, retorna vazio (ou null como antes)
           return res.status(200).json([]);
         }
       } else if (role === "professor") {
@@ -29,18 +28,14 @@ const orientacaoController = {
         if (professor) {
           where.id_professor = professor.id_professor;
         } else {
-          // Se não encontrou professor, retorna vazio
           return res.status(200).json([]);
         }
       } else {
-        // Se não for aluno nem professor (ex: admin sem perfil), retorna vazio
         return res.status(200).json([]);
       }
 
-      // Excluir orientações já canceladas ou encerradas da busca principal,
-      // a menos que queiramos um filtro específico para elas no futuro.
-      where.status = { [Op.notIn]: ["cancelado", "encerrado"] };
-
+      // Busca todas as orientações (ativas e inativas) para o usuário
+      // O frontend vai filtrar/separar se necessário
       const orientacoes = await Orientacao.findAll({
         where,
         include: [
@@ -67,10 +62,15 @@ const orientacaoController = {
             as: "ideiaTcc",
           },
         ],
-        order: [["data_inicio", "DESC"]], // Ordenar
+        order: [
+          // Ordena para mostrar ativas primeiro, depois por data
+          Sequelize.literal(
+            "CASE status WHEN 'em desenvolvimento' THEN 1 WHEN 'pausado' THEN 2 WHEN 'finalizado' THEN 3 WHEN 'encerrado' THEN 4 ELSE 5 END"
+          ),
+          ["data_inicio", "DESC"],
+        ],
       });
 
-      // Retorna array vazio se não houver orientações ativas
       res.status(200).json(orientacoes);
     } catch (error) {
       console.error("Erro ao buscar orientação:", error);
@@ -81,10 +81,9 @@ const orientacaoController = {
   },
 
   async updateOrientacao(req, res) {
-    // Mantém a lógica original para editar detalhes gerais
     try {
       const { id } = req.params;
-      const { url_projeto, observacoes, status } = req.body; // Status geral pode ser atualizado aqui também
+      const { url_projeto, observacoes, status } = req.body;
       const idUsuario = req.user.id;
       const role = req.user.role;
 
@@ -94,7 +93,6 @@ const orientacaoController = {
         return res.status(404).json({ error: "Orientação não encontrada." });
       }
 
-      // Check permissions: only student or professor involved can update
       let hasPermission = false;
       const aluno = await Aluno.findOne({ where: { id_usuario: idUsuario } });
       const professor = await Professor.findOne({
@@ -114,7 +112,6 @@ const orientacaoController = {
         });
       }
 
-      // Não permitir alterar status para cancelado/encerrado diretamente aqui
       const allowedStatusUpdates = [
         "em desenvolvimento",
         "finalizado",
@@ -122,14 +119,20 @@ const orientacaoController = {
       ];
       if (status && !allowedStatusUpdates.includes(status)) {
         return res.status(400).json({
-          error: `Atualização de status inválida por esta rota. Use as rotas de cancelamento.`,
+          error: `Atualização de status inválida por esta rota. Use as rotas de cancelamento/encerramento.`,
         });
+      }
+      // Não permitir edição se já foi encerrada ou cancelada
+      if (["cancelado", "encerrado"].includes(orientacao.status)) {
+        return res
+          .status(400)
+          .json({ error: "Não é possível editar uma orientação encerrada." });
       }
 
       const toUpdate = {};
       if (url_projeto !== undefined) toUpdate.url_projeto = url_projeto;
       if (observacoes !== undefined) toUpdate.observacoes = observacoes;
-      if (status !== undefined) toUpdate.status = status; // Apenas status permitidos
+      if (status !== undefined) toUpdate.status = status;
 
       await orientacao.update(toUpdate);
 
@@ -144,7 +147,7 @@ const orientacaoController = {
 
   async solicitarCancelamento(req, res) {
     try {
-      const { id } = req.params; // id_orientacao
+      const { id } = req.params;
       const idUsuario = req.user.id;
 
       const aluno = await Aluno.findOne({ where: { id_usuario: idUsuario } });
@@ -163,10 +166,9 @@ const orientacaoController = {
         });
       }
 
-      // Verifica se já não foi solicitado ou cancelado/encerrado
       if (
         orientacao.solicitacao_cancelamento !== "nenhuma" ||
-        ["cancelado", "encerrado"].includes(orientacao.status)
+        ["cancelado", "encerrado", "finalizado"].includes(orientacao.status)
       ) {
         return res.status(400).json({
           error: "Não é possível solicitar cancelamento nesta orientação.",
@@ -186,11 +188,10 @@ const orientacaoController = {
     }
   },
 
-  // Nova função para professor confirmar cancelamento
   async confirmarCancelamento(req, res) {
     try {
-      const { id } = req.params; // id_orientacao
-      const { feedback_cancelamento } = req.body; // Feedback opcional
+      const { id } = req.params;
+      const { feedback_cancelamento } = req.body;
       const idUsuario = req.user.id;
 
       const professor = await Professor.findOne({
@@ -211,19 +212,25 @@ const orientacaoController = {
         });
       }
 
-      // Verifica se houve uma solicitação do aluno
       if (orientacao.solicitacao_cancelamento !== "aluno") {
         return res.status(400).json({
           error:
             "Não há solicitação de cancelamento pendente do aluno para esta orientação.",
         });
       }
+      if (
+        ["cancelado", "encerrado", "finalizado"].includes(orientacao.status)
+      ) {
+        return res.status(400).json({
+          error: "Esta orientação já foi finalizada ou encerrada.",
+        });
+      }
 
       await orientacao.update({
-        status: "encerrado", // Novo status final
+        status: "encerrado",
         data_fim: new Date(),
-        feedback_cancelamento: feedback_cancelamento || null, // Salva o feedback ou null
-        solicitacao_cancelamento: "nenhuma", // Limpa a solicitação
+        feedback_cancelamento: feedback_cancelamento || null,
+        solicitacao_cancelamento: "nenhuma",
       });
 
       res.status(200).json({ message: "Orientação encerrada com sucesso." });
@@ -232,6 +239,58 @@ const orientacaoController = {
       res
         .status(500)
         .json({ error: "Ocorreu um erro ao confirmar o cancelamento." });
+    }
+  },
+
+  // Nova função para cancelamento direto pelo professor
+  async cancelarOrientacaoProfessor(req, res) {
+    try {
+      const { id } = req.params; // id_orientacao
+      const { feedback_cancelamento } = req.body; // Feedback opcional
+      const idUsuario = req.user.id;
+
+      const professor = await Professor.findOne({
+        where: { id_usuario: idUsuario },
+      });
+      if (!professor) {
+        return res
+          .status(403)
+          .json({ error: "Apenas professores podem cancelar orientações." });
+      }
+
+      const orientacao = await Orientacao.findOne({
+        where: { id_orientacao: id, id_professor: professor.id_professor },
+      });
+      if (!orientacao) {
+        return res.status(404).json({
+          error: "Orientação não encontrada ou não pertence a este professor.",
+        });
+      }
+
+      // Verifica se a orientação já não está encerrada/finalizada
+      if (
+        ["cancelado", "encerrado", "finalizado"].includes(orientacao.status)
+      ) {
+        return res.status(400).json({
+          error: "Esta orientação já foi finalizada ou encerrada.",
+        });
+      }
+
+      await orientacao.update({
+        status: "encerrado",
+        data_fim: new Date(),
+        feedback_cancelamento: feedback_cancelamento || null,
+        solicitacao_cancelamento: "professor", // Indica que foi o professor quem cancelou
+      });
+
+      res
+        .status(200)
+        .json({ message: "Orientação encerrada com sucesso pelo professor." });
+    } catch (error) {
+      console.error("Erro ao cancelar orientação pelo professor:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao encerrar a orientação." });
     }
   },
 };
