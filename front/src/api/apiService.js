@@ -63,9 +63,10 @@ async function fetchApi(endpoint, options = {}) {
 
 // --- Funções de Reunião ---
 export const getReunioes = (id_orientacao) =>
-  fetchApi(`/reunioes/${id_orientacao}`);
+  fetchApi(`/reunioes/orientacao/${id_orientacao}`);
+export const getReunioesProfessor = () => fetchApi("/reunioes/professor"); // Nova função
 export const criarReuniao = (id_orientacao, data) =>
-  fetchApi(`/reunioes/${id_orientacao}`, {
+  fetchApi(`/reunioes/orientacao/${id_orientacao}`, {
     method: "POST",
     body: JSON.stringify(data),
   });

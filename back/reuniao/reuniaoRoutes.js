@@ -5,8 +5,12 @@ const authMiddleware = require("../middleware/authToken");
 
 router.use(authMiddleware.authenticateToken);
 
-router.get("/:id_orientacao", reuniaoController.listarReunioes);
-router.post("/:id_orientacao", reuniaoController.criarReuniao);
+router.get("/orientacao/:id_orientacao", reuniaoController.listarReunioes);
+
+router.get("/professor", reuniaoController.listarReunioesProfessor);
+
+router.post("/orientacao/:id_orientacao", reuniaoController.criarReuniao);
+
 router.patch("/:id_reuniao", reuniaoController.atualizarReuniao);
 
 module.exports = router;

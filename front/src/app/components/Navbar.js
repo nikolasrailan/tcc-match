@@ -66,6 +66,11 @@ export default function Navbar() {
             Painel Professor
           </Link>
         )}
+        {user?.dadosProfessor && ( // Adiciona link para professor
+          <Link href="/reunioes" className={cn(navigationMenuTriggerStyle())}>
+            Reuniões
+          </Link>
+        )}
         {(user?.dadosAluno || user?.dadosProfessor) && (
           <Link href="/orientacao" className={cn(navigationMenuTriggerStyle())}>
             Orientação
