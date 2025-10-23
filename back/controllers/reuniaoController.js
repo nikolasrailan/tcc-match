@@ -1,8 +1,15 @@
-const { Reuniao, Orientacao, Aluno, Professor, Usuario } = require("../models");
+const {
+  Reuniao,
+  Orientacao,
+  Aluno,
+  Professor,
+  Usuario,
+  IdeiaTcc,
+} = require("../models"); // Adiciona IdeiaTcc
 const { Op, Sequelize } = require("sequelize"); // Importa Op e Sequelize
 
 const reuniaoController = {
-  // Lista reuniões de UMA orientação específica
+  // ... listarReunioes (sem alterações) ...
   async listarReunioes(req, res) {
     try {
       const { id_orientacao } = req.params;
@@ -35,16 +42,23 @@ const reuniaoController = {
             model: Orientacao,
             as: "orientacao",
             where: { id_professor: professor.id_professor },
-            attributes: [], // Não precisa dos dados da orientação aqui
+            attributes: ["id_orientacao"], // Apenas atributos necessários da Orientacao
             include: [
+              // Inclui Aluno e IdeiaTcc dentro de Orientacao
               {
                 model: Aluno,
                 as: "aluno",
+                attributes: ["id_aluno"], // Apenas atributos necessários do Aluno
                 include: {
                   model: Usuario,
                   as: "dadosUsuario",
                   attributes: ["nome"], // Pega o nome do aluno
                 },
+              },
+              {
+                model: IdeiaTcc,
+                as: "ideiaTcc",
+                attributes: ["titulo"], // Pega o título da ideia
               },
             ],
           },
@@ -65,6 +79,7 @@ const reuniaoController = {
     }
   },
 
+  // ... criarReuniao (sem alterações na lógica principal, mas incluindo IdeiaTcc na busca de Orientacao se necessário) ...
   async criarReuniao(req, res) {
     try {
       const { id_orientacao } = req.params;
@@ -74,8 +89,9 @@ const reuniaoController = {
       // Verifica se a orientação existe
       const orientacao = await Orientacao.findByPk(id_orientacao, {
         include: [
-          { model: Aluno, as: "aluno" },
-          { model: Professor, as: "professor" },
+          { model: Aluno, as: "aluno", include: ["dadosUsuario"] }, // Inclui dados do usuário do aluno
+          { model: Professor, as: "professor", include: ["usuario"] }, // Inclui dados do usuário do professor
+          { model: IdeiaTcc, as: "ideiaTcc", attributes: ["titulo"] }, // Inclui IdeiaTcc para referência se necessário
         ],
       });
       if (!orientacao) {
@@ -83,8 +99,9 @@ const reuniaoController = {
       }
 
       // Verifica se o usuário logado é o aluno ou o professor da orientação
-      const isAluno = orientacao.aluno.id_usuario === idUsuario;
-      const isProfessor = orientacao.professor.id_usuario === idUsuario;
+      const isAluno = orientacao.aluno?.dadosUsuario?.id_usuario === idUsuario; // Acessa id_usuario aninhado
+      const isProfessor =
+        orientacao.professor?.usuario?.id_usuario === idUsuario; // Acessa id_usuario aninhado
       if (!isAluno && !isProfessor) {
         return res
           .status(403)
@@ -171,6 +188,7 @@ const reuniaoController = {
     }
   },
 
+  // ... atualizarReuniao (sem alterações na lógica principal, mas incluindo IdeiaTcc na busca de Orientacao se necessário) ...
   async atualizarReuniao(req, res) {
     try {
       const { id_reuniao } = req.params;
@@ -181,7 +199,11 @@ const reuniaoController = {
         include: {
           model: Orientacao,
           as: "orientacao",
-          include: ["aluno", "professor"],
+          include: [
+            { model: Aluno, as: "aluno", include: ["dadosUsuario"] },
+            { model: Professor, as: "professor", include: ["usuario"] },
+            { model: IdeiaTcc, as: "ideiaTcc", attributes: ["titulo"] },
+          ],
         },
       });
       if (!reuniao) {
@@ -189,8 +211,11 @@ const reuniaoController = {
       }
 
       // Verifica permissão
-      const isAluno = reuniao.orientacao.aluno.id_usuario === idUsuario;
-      const isProfessor = reuniao.orientacao.professor.id_usuario === idUsuario;
+      const isAluno =
+        reuniao.orientacao?.aluno?.dadosUsuario?.id_usuario === idUsuario; // Acessa id_usuario aninhado
+      const isProfessor =
+        reuniao.orientacao?.professor?.usuario?.id_usuario === idUsuario; // Acessa id_usuario aninhado
+
       if (!isAluno && !isProfessor) {
         return res
           .status(403)
@@ -200,7 +225,8 @@ const reuniaoController = {
       // Se a data/hora está sendo alterada, verifica conflito
       if (
         data_horario &&
-        data_horario !== reuniao.data_horario.toISOString().slice(0, 16)
+        new Date(data_horario).toISOString() !==
+          reuniao.data_horario.toISOString()
       ) {
         const id_professor = reuniao.orientacao.id_professor;
         const dataInicio = new Date(data_horario);

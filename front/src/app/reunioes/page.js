@@ -85,6 +85,7 @@ export default function ReunioesProfessorPage() {
                 <TableRow>
                   <TableHead>Data e Hora</TableHead>
                   <TableHead>Aluno</TableHead>
+                  <TableHead>Projeto</TableHead> {/* Nova coluna */}
                   <TableHead>Pauta</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
@@ -103,8 +104,14 @@ export default function ReunioesProfessorPage() {
                         )}
                       </TableCell>
                       <TableCell className="font-medium">
+                        {/* Acessa o nome do aluno através da estrutura aninhada */}
                         {reuniao.orientacao?.aluno?.dadosUsuario?.nome ||
                           "Aluno não encontrado"}
+                      </TableCell>
+                      <TableCell>
+                        {/* Acessa o título do projeto através da estrutura aninhada */}
+                        {reuniao.orientacao?.ideiaTcc?.titulo ||
+                          "Projeto não encontrado"}
                       </TableCell>
                       <TableCell>{reuniao.pauta || "-"}</TableCell>
                       <TableCell>
@@ -115,7 +122,9 @@ export default function ReunioesProfessorPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center h-24">
+                    <TableCell colSpan={5} className="text-center h-24">
+                      {" "}
+                      {/* Ajusta colSpan */}
                       Nenhuma reunião agendada encontrada.
                     </TableCell>
                   </TableRow>
