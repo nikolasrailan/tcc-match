@@ -97,7 +97,7 @@ export const atualizarReuniao = (id_reuniao, data) =>
 export const getTopicos = (id_orientacao) =>
   fetchApi(`/topicos/${id_orientacao}`);
 export const viewTopico = (id_topico) =>
-  fetchApi(`/topicos/${id_topico}/view`, { method: "PATCH" }); // Ajuste para PATCH ou POST se necessário
+  fetchApi(`/topicos/${id_topico}/view`, { method: "GET" });
 export const criarTopico = (id_orientacao, data) =>
   fetchApi(`/topicos/${id_orientacao}`, {
     method: "POST",
