@@ -14,7 +14,6 @@ async function fetchApi(endpoint, options = {}) {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_URL_API}${endpoint}`,
       {
-        // Usar variável de ambiente
         ...options,
         headers,
       }
@@ -26,55 +25,46 @@ async function fetchApi(endpoint, options = {}) {
       if (contentType && contentType.includes("application/json")) {
         try {
           const body = await response.json();
-          // Prioriza a mensagem de erro específica do backend, se houver
           errorData.message = body.error || body.message || errorData.message;
-          // Se for um array de erros (validação), junta as mensagens
           if (body.errors && Array.isArray(body.errors)) {
             errorData.message = body.errors
               .map((err) => err.msg || err.message)
               .join("\n");
           }
         } catch (e) {
-          // Ignore if response body is not valid JSON
           errorData.message = `Erro ${response.status}: ${response.statusText}`;
         }
       }
       throw new Error(errorData.message);
     }
 
-    // Handle No Content response
     if (response.status === 204) {
       return { success: true };
     }
 
-    // Handle potential non-JSON success responses (like plain text)
     if (
       response.status === 200 &&
       (!contentType || !contentType.includes("application/json"))
     ) {
       try {
         const textResponse = await response.text();
-        // Return text if it exists, otherwise assume success
         if (textResponse) {
-          return { message: textResponse }; // Or potentially parse if expected format
+          return { message: textResponse };
         }
-        return { success: true }; // Consider success if empty 200 response
+        return { success: true };
       } catch (e) {
-        // Fallback if reading text fails
         return { success: true };
       }
     }
 
-    // Default: assume JSON response
     if (contentType && contentType.includes("application/json")) {
       return await response.json();
     }
 
-    // Fallback for unexpected content types with success status
     return { success: true, status: response.status };
   } catch (error) {
     console.error(`Erro na chamada da API para ${endpoint}:`, error.message);
-    throw error; // Re-throw the error to be caught by the calling function
+    throw error;
   }
 }
 
