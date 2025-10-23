@@ -11,10 +11,14 @@ async function fetchApi(endpoint, options = {}) {
   }
 
   try {
-    const response = await fetch(`http://localhost:8000${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_URL_API}${endpoint}`,
+      {
+        // Usar variável de ambiente
+        ...options,
+        headers,
+      }
+    );
 
     const contentType = response.headers.get("content-type");
     if (!response.ok) {
@@ -22,7 +26,14 @@ async function fetchApi(endpoint, options = {}) {
       if (contentType && contentType.includes("application/json")) {
         try {
           const body = await response.json();
+          // Prioriza a mensagem de erro específica do backend, se houver
           errorData.message = body.error || body.message || errorData.message;
+          // Se for um array de erros (validação), junta as mensagens
+          if (body.errors && Array.isArray(body.errors)) {
+            errorData.message = body.errors
+              .map((err) => err.msg || err.message)
+              .join("\n");
+          }
         } catch (e) {
           // Ignore if response body is not valid JSON
           errorData.message = `Erro ${response.status}: ${response.statusText}`;
@@ -31,33 +42,39 @@ async function fetchApi(endpoint, options = {}) {
       throw new Error(errorData.message);
     }
 
+    // Handle No Content response
     if (response.status === 204) {
       return { success: true };
     }
 
+    // Handle potential non-JSON success responses (like plain text)
     if (
       response.status === 200 &&
       (!contentType || !contentType.includes("application/json"))
     ) {
       try {
         const textResponse = await response.text();
+        // Return text if it exists, otherwise assume success
         if (textResponse) {
-          return { message: textResponse };
+          return { message: textResponse }; // Or potentially parse if expected format
         }
-        return { success: true };
+        return { success: true }; // Consider success if empty 200 response
       } catch (e) {
+        // Fallback if reading text fails
         return { success: true };
       }
     }
 
+    // Default: assume JSON response
     if (contentType && contentType.includes("application/json")) {
       return await response.json();
     }
 
+    // Fallback for unexpected content types with success status
     return { success: true, status: response.status };
   } catch (error) {
     console.error(`Erro na chamada da API para ${endpoint}:`, error.message);
-    throw error;
+    throw error; // Re-throw the error to be caught by the calling function
   }
 }
 
@@ -79,7 +96,8 @@ export const atualizarReuniao = (id_reuniao, data) =>
 // --- Funções de Tópicos ---
 export const getTopicos = (id_orientacao) =>
   fetchApi(`/topicos/${id_orientacao}`);
-export const viewTopico = (id_topico) => fetchApi(`/topicos/${id_topico}/view`);
+export const viewTopico = (id_topico) =>
+  fetchApi(`/topicos/${id_topico}/view`, { method: "PATCH" }); // Ajuste para PATCH ou POST se necessário
 export const criarTopico = (id_orientacao, data) =>
   fetchApi(`/topicos/${id_orientacao}`, {
     method: "POST",
@@ -183,6 +201,10 @@ export const getProfessores = (apenasDisponiveis = false) => {
 
 // --- Professor Dashboard ---
 export const getProfessorDashboard = () => fetchApi("/professores/dashboard");
+
+// --- Função de Match ---
+export const findProfessorMatch = (id_ideia_tcc) =>
+  fetchApi(`/professores/match/${id_ideia_tcc}`);
 
 // --- Funções de Solicitação ---
 export const enviarSolicitacao = (dados) =>

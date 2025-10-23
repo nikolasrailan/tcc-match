@@ -27,16 +27,25 @@ router.delete(
   professorController.deletarProfessor
 );
 
+// Rota pública (ou para alunos/professores) para listar professores
 router.get(
   "/public-list",
   authenticateToken,
   professorController.listarProfessoresPublic
 );
 
+// Rota para obter dados do dashboard do professor
 router.get(
   "/dashboard",
   authenticateToken,
   professorController.getDashboardData
+);
+
+// Rota para encontrar o melhor match para uma ideia de TCC (acessível por aluno autenticado)
+router.get(
+  "/match/:id_ideia_tcc",
+  authenticateToken,
+  professorController.findMatchForIdeia
 );
 
 module.exports = router;

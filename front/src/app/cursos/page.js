@@ -58,7 +58,7 @@ export default function CursosPage() {
 
   const handleOpenEditModal = (curso) => {
     setCursoEmEdicao(curso);
-    setNovaCursoNome(curso.nome);
+    setNovoCursoNome(curso.nome);
     setEditModalOpen(true);
     setError("");
   };

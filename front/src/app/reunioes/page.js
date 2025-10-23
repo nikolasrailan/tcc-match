@@ -153,7 +153,7 @@ export default function ReunioesProfessorPage() {
                   <TableHead>Projeto</TableHead>
                   <TableHead>Pauta</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>{" "}
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -295,6 +295,146 @@ const professorController = {
         .json({ error: "Ocorreu um erro ao processar a requisição." });
     }
   },
+
+  async findMatchForIdeia(req, res) {
+    try {
+      const { id_ideia_tcc } = req.params;
+      const idUsuario = req.user.id; // Garante que só o aluno logado pode fazer isso
+
+      // Verifica se o requisitante é aluno
+      const aluno = await Aluno.findOne({ where: { id_usuario: idUsuario } });
+      if (!aluno) {
+        return res.status(403).json({ error: "Acesso negado." });
+      }
+
+      // Busca a ideia e suas áreas de interesse
+      const ideia = await IdeiaTcc.findByPk(id_ideia_tcc, {
+        include: [
+          {
+            model: AreaInteresse,
+            as: "areasDeInteresse",
+            attributes: ["id_area"],
+            through: { attributes: [] }, // Não trazer dados da tabela de junção
+            required: false, // Inclui mesmo que não tenha áreas associadas
+          },
+        ],
+      });
+
+      if (!ideia || ideia.id_aluno !== aluno.id_aluno) {
+        return res.status(404).json({
+          error: "Ideia de TCC não encontrada ou não pertence a este aluno.",
+        });
+      }
+
+      if (ideia.status !== 0) {
+        return res
+          .status(400)
+          .json({ error: "Esta ideia não está disponível para match." });
+      }
+
+      const ideiaAreaIds = new Set(
+        ideia.areasDeInteresse?.map((area) => area.id_area) || []
+      );
+
+      if (ideiaAreaIds.size === 0) {
+        return res.status(400).json({
+          error:
+            "Sua ideia precisa ter áreas de interesse definidas para encontrar um match.",
+        });
+      }
+
+      // Busca todos os professores disponíveis com suas áreas de interesse
+      const professores = await Professor.findAll({
+        where: { disponibilidade: true }, // Apenas professores disponíveis
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["id_usuario", "nome"],
+          },
+          {
+            model: AreaInteresse,
+            as: "areasDeInteresse",
+            attributes: ["id_area", "nome"], // Pega o nome aqui para exibir depois
+            through: { attributes: [] },
+            required: false, // Inclui mesmo que o professor não tenha áreas
+          },
+        ],
+        // Adiciona contagem de orientações ativas para filtrar professores com vagas
+        attributes: {
+          include: [
+            [
+              sequelize.literal(`(
+                SELECT COUNT(*)
+                FROM orientacao AS o
+                WHERE
+                  o.id_professor = Professor.id_professor
+                  AND o.status IN ('em desenvolvimento', 'pausado')
+              )`),
+              "orientacoes_ativas_count",
+            ],
+          ],
+        },
+      });
+
+      if (!professores || professores.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "Nenhum professor disponível encontrado." });
+      }
+
+      let bestMatch = null;
+      let maxScore = -1;
+
+      for (const professor of professores) {
+        // Verifica se o professor tem vagas
+        const orientacoesAtivas =
+          professor.dataValues.orientacoes_ativas_count || 0;
+        if (orientacoesAtivas >= professor.limite_orientacoes) {
+          continue; // Pula professor sem vagas
+        }
+
+        const professorAreaIds = new Set(
+          professor.areasDeInteresse?.map((area) => area.id_area) || []
+        );
+
+        let currentScore = 0;
+        for (const ideiaAreaId of ideiaAreaIds) {
+          if (professorAreaIds.has(ideiaAreaId)) {
+            currentScore++;
+          }
+        }
+
+        if (currentScore > maxScore) {
+          maxScore = currentScore;
+          bestMatch = professor;
+        }
+      }
+
+      if (maxScore === 0 || !bestMatch) {
+        // Se maxScore for 0, significa que nenhum professor tinha áreas em comum OU
+        // todos os professores com áreas em comum não tinham vagas.
+        // Retornamos 404 para indicar que não há um match adequado *com vagas*.
+        return res.status(404).json({
+          error:
+            "Nenhum professor com áreas de interesse compatíveis e vagas disponíveis foi encontrado.",
+        });
+      }
+
+      // Retorna o melhor match encontrado
+      res.status(200).json({
+        id_professor: bestMatch.id_professor,
+        nome: bestMatch.usuario.nome,
+        areasDeInteresse: bestMatch.areasDeInteresse || [], // Retorna as áreas com nome
+        matchScore: maxScore,
+      });
+    } catch (error) {
+      console.error("Erro ao encontrar match:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao tentar encontrar o match." });
+    }
+  },
 };
 
 module.exports = professorController;
