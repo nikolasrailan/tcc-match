@@ -191,6 +191,8 @@ const orientacaoController = {
   },
 
   async confirmarCancelamento(req, res) {
+    // Confirma cancelamento solicitado pelo ALUNO
+    const t = await sequelize.transaction();
     try {
       const { id } = req.params;
       const { feedback_cancelamento } = req.body;
@@ -200,6 +202,7 @@ const orientacaoController = {
         where: { id_usuario: idUsuario },
       });
       if (!professor) {
+        await t.rollback();
         return res
           .status(403)
           .json({ error: "Apenas professores podem confirmar cancelamento." });
@@ -209,12 +212,14 @@ const orientacaoController = {
         where: { id_orientacao: id, id_professor: professor.id_professor },
       });
       if (!orientacao) {
+        await t.rollback();
         return res.status(404).json({
           error: "Orientação não encontrada ou não pertence a este professor.",
         });
       }
 
       if (orientacao.solicitacao_cancelamento !== "aluno") {
+        await t.rollback();
         return res.status(400).json({
           error:
             "Não há solicitação de cancelamento pendente do aluno para esta orientação.",
@@ -223,20 +228,40 @@ const orientacaoController = {
       if (
         ["cancelado", "encerrado", "finalizado"].includes(orientacao.status)
       ) {
+        await t.rollback();
         return res.status(400).json({
           error: "Esta orientação já foi finalizada ou encerrada.",
         });
       }
 
-      await orientacao.update({
-        status: "encerrado",
-        data_fim: new Date(),
-        feedback_cancelamento: feedback_cancelamento || null,
-        solicitacao_cancelamento: "nenhuma",
-      });
+      // Encontra a ideia associada para reverter o status
+      const ideia = await IdeiaTcc.findByPk(orientacao.id_ideia_tcc);
+      if (!ideia) {
+        await t.rollback();
+        return res
+          .status(404)
+          .json({ error: "Ideia de TCC associada não encontrada." });
+      }
+
+      // Atualiza Orientação
+      await orientacao.update(
+        {
+          status: "encerrado",
+          data_fim: new Date(),
+          feedback_cancelamento: feedback_cancelamento || null,
+          solicitacao_cancelamento: "nenhuma",
+        },
+        { transaction: t }
+      );
+
+      // Volta o status da IdeiaTcc para 0 (Pendente/Disponível)
+      await ideia.update({ status: 0 }, { transaction: t });
+
+      await t.commit();
 
       res.status(200).json({ message: "Orientação encerrada com sucesso." });
     } catch (error) {
+      await t.rollback();
       console.error("Erro ao confirmar cancelamento:", error);
       res
         .status(500)
@@ -246,6 +271,7 @@ const orientacaoController = {
 
   // Nova função para cancelamento direto pelo professor
   async cancelarOrientacaoProfessor(req, res) {
+    const t = await sequelize.transaction();
     try {
       const { id } = req.params; // id_orientacao
       const { feedback_cancelamento } = req.body; // Feedback opcional
@@ -255,6 +281,7 @@ const orientacaoController = {
         where: { id_usuario: idUsuario },
       });
       if (!professor) {
+        await t.rollback();
         return res
           .status(403)
           .json({ error: "Apenas professores podem cancelar orientações." });
@@ -264,6 +291,7 @@ const orientacaoController = {
         where: { id_orientacao: id, id_professor: professor.id_professor },
       });
       if (!orientacao) {
+        await t.rollback();
         return res.status(404).json({
           error: "Orientação não encontrada ou não pertence a este professor.",
         });
@@ -273,22 +301,42 @@ const orientacaoController = {
       if (
         ["cancelado", "encerrado", "finalizado"].includes(orientacao.status)
       ) {
+        await t.rollback();
         return res.status(400).json({
           error: "Esta orientação já foi finalizada ou encerrada.",
         });
       }
 
-      await orientacao.update({
-        status: "encerrado",
-        data_fim: new Date(),
-        feedback_cancelamento: feedback_cancelamento || null,
-        solicitacao_cancelamento: "professor", // Indica que foi o professor quem cancelou
-      });
+      // Encontra a ideia associada para reverter o status
+      const ideia = await IdeiaTcc.findByPk(orientacao.id_ideia_tcc);
+      if (!ideia) {
+        await t.rollback();
+        return res
+          .status(404)
+          .json({ error: "Ideia de TCC associada não encontrada." });
+      }
+
+      // Atualiza Orientação
+      await orientacao.update(
+        {
+          status: "encerrado",
+          data_fim: new Date(),
+          feedback_cancelamento: feedback_cancelamento || null,
+          solicitacao_cancelamento: "professor", // Indica que foi o professor quem cancelou
+        },
+        { transaction: t }
+      );
+
+      // Volta o status da IdeiaTcc para 0 (Pendente/Disponível)
+      await ideia.update({ status: 0 }, { transaction: t });
+
+      await t.commit();
 
       res
         .status(200)
         .json({ message: "Orientação encerrada com sucesso pelo professor." });
     } catch (error) {
+      await t.rollback();
       console.error("Erro ao cancelar orientação pelo professor:", error);
       res
         .status(500)
