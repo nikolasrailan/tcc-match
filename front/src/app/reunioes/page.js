@@ -85,7 +85,7 @@ export default function ReunioesProfessorPage() {
                 <TableRow>
                   <TableHead>Data e Hora</TableHead>
                   <TableHead>Aluno</TableHead>
-                  <TableHead>Projeto</TableHead> {/* Nova coluna */}
+                  <TableHead>Projeto</TableHead>
                   <TableHead>Pauta</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
