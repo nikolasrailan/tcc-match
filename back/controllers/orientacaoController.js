@@ -4,8 +4,9 @@ const {
   Professor,
   IdeiaTcc,
   Usuario,
+  sequelize, // Adiciona sequelize aqui
 } = require("../models");
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize"); // Importa Sequelize também se Op já estiver sendo usado
 
 const orientacaoController = {
   async getOrientacao(req, res) {
@@ -65,7 +66,8 @@ const orientacaoController = {
         order: [
           // Ordena para mostrar ativas primeiro, depois por data
           Sequelize.literal(
-            "CASE status WHEN 'em desenvolvimento' THEN 1 WHEN 'pausado' THEN 2 WHEN 'finalizado' THEN 3 WHEN 'encerrado' THEN 4 ELSE 5 END"
+            // Especifica a tabela Orientacao para a coluna status
+            "CASE `Orientacao`.`status` WHEN 'em desenvolvimento' THEN 1 WHEN 'pausado' THEN 2 WHEN 'finalizado' THEN 3 WHEN 'encerrado' THEN 4 ELSE 5 END"
           ),
           ["data_inicio", "DESC"],
         ],
