@@ -7,6 +7,7 @@ import {
   enviarSolicitacao,
   getMinhasSolicitacoes,
   cancelarSolicitacao,
+  findProfessorMatch, // Importar a nova função
 } from "@/api/apiService";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,23 +36,21 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import ConfirmationDialog from "../components/reuniao/ConfirmacaoDialog";
+import SelectIdeiaDialog from "../components/solicitacao/SelectIdeiaDialog"; // Importar componente
+import MatchResultDialog from "../components/solicitacao/MatchResultDialog"; // Importar componente
 import { toast } from "sonner";
+import { Loader2, Search } from "lucide-react"; // Importar Loader2 e Search
 
-const styleModal = {
-  flexDirection: "column",
-  gap: 2,
-};
-
+// --- Componente Principal da Página ---
 export default function SolicitarOrientacaoPage() {
   useAuthRedirect();
   const [professores, setProfessores] = useState([]);
-  const [ideias, setIdeias] = useState([]);
+  const [ideias, setIdeias] = useState([]); // Ideias disponíveis (status 0)
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [selectedProfessor, setSelectedProfessor] = useState("");
   const [selectedIdeia, setSelectedIdeia] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Loading geral da página
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [confirmationState, setConfirmationState] = useState({
     open: false,
     title: "",
@@ -59,10 +58,17 @@ export default function SolicitarOrientacaoPage() {
     onConfirm: () => {},
   });
 
+  // Estados para os diálogos de Match
+  const [isMatchDialogOpen, setIsMatchDialogOpen] = useState(false);
+  const [isMatchResultDialogOpen, setIsMatchResultDialogOpen] = useState(false);
+  const [selectedIdeiaForMatch, setSelectedIdeiaForMatch] = useState(null);
+  const [matchedProfessor, setMatchedProfessor] = useState(null);
+  const [isFindingMatch, setIsFindingMatch] = useState(false); // Loading específico do match
+
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    // Não seta loading aqui para evitar piscar na tela ao enviar solicitação ou cancelar
     const [profData, ideiasData, solicitacoesData] = await Promise.all([
-      getProfessores(true),
+      getProfessores(true), // Pega apenas professores disponíveis
       getMinhaIdeiaTcc(),
       getMinhasSolicitacoes(),
     ]);
@@ -71,6 +77,7 @@ export default function SolicitarOrientacaoPage() {
       setProfessores(profData);
     }
     if (ideiasData) {
+      // Filtra ideias com status 0 (disponíveis)
       const ideiasDisponiveis = ideiasData.filter(
         (ideia) => ideia.status === 0
       );
@@ -79,50 +86,61 @@ export default function SolicitarOrientacaoPage() {
     if (solicitacoesData) {
       setSolicitacoes(solicitacoesData);
     }
-    setLoading(false);
+    setLoading(false); // Seta loading false apenas após buscar todos os dados
   }, []);
 
   useEffect(() => {
+    setLoading(true); // Seta loading true na montagem inicial
     fetchData();
   }, [fetchData]);
 
+  // Handler para envio da solicitação normal (manual)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
+    await handleSendRequest(selectedProfessor, selectedIdeia);
+  };
 
-    if (!selectedProfessor || !selectedIdeia) {
+  // Handler genérico para enviar solicitação (usado pelo form manual e pelo dialog de match)
+  const handleSendRequest = async (professorId, ideiaId) => {
+    if (!professorId || !ideiaId) {
       const msg = "Por favor, selecione um professor e uma ideia.";
-      setError(msg);
+      setError(msg); // Define o erro para exibição (opcional)
       toast.error(msg);
-      setLoading(false);
-      return;
+      return; // Sai da função
     }
+
+    setLoading(true); // Ativa loading geral
+    setError(""); // Limpa erro anterior
 
     try {
       const result = await enviarSolicitacao({
-        id_professor: selectedProfessor,
-        id_ideia_tcc: selectedIdeia,
+        id_professor: professorId,
+        id_ideia_tcc: ideiaId,
       });
 
       if (result) {
         toast.success("Solicitação enviada com sucesso!");
-        fetchData();
-        setSelectedIdeia("");
-        setSelectedProfessor("");
+        setSelectedIdeia(""); // Limpa seleção do formulário principal
+        setSelectedProfessor(""); // Limpa seleção do formulário principal
+        setIsMatchResultDialogOpen(false); // Fecha o dialog de resultado (se aberto)
+        setSelectedIdeiaForMatch(null); // Limpa ideia do match
+        setMatchedProfessor(null); // Limpa professor do match
+        fetchData(); // Atualiza a lista de solicitações e ideias disponíveis
       }
+      // Se não houver 'result', o erro já foi tratado pela fetchApi e exibido pelo toast
     } catch (err) {
-      const msg =
-        err.message ||
-        "Não foi possível enviar a solicitação. Verifique se já não existe uma solicitação para esta ideia ou alguma pendente.";
-      setError(msg);
-      toast.error("Erro ao enviar solicitação", { description: msg });
+      // Erro já tratado e exibido pelo toast na fetchApi
+      // Apenas garantimos que o erro seja limpo se necessário em futuras ações
+      setError(err.message || "Erro desconhecido ao enviar solicitação.");
+      toast.error("Erro ao enviar solicitação", {
+        description: err.message || "Tente novamente.",
+      }); // Garante que o toast seja mostrado
     } finally {
-      setLoading(false);
+      setLoading(false); // Desativa loading geral
     }
   };
 
+  // Handler para abrir o diálogo de cancelamento
   const handleOpenCancelModal = (solicitacao) => {
     setConfirmationState({
       open: true,
@@ -133,21 +151,65 @@ export default function SolicitarOrientacaoPage() {
       onConfirm: async () => {
         if (!solicitacao) return;
 
-        setLoading(true);
-        const result = await cancelarSolicitacao(solicitacao.id_solicitacao);
-        if (result) {
-          toast.success("Solicitação cancelada com sucesso!");
-          fetchData();
-        } else {
-          toast.error("Não foi possível cancelar a solicitação.");
+        setLoading(true); // Ativa loading geral
+        try {
+          const result = await cancelarSolicitacao(solicitacao.id_solicitacao);
+          if (result) {
+            toast.success("Solicitação cancelada com sucesso!");
+            fetchData(); // Atualiza a lista
+          }
+          // Erros são tratados pelo fetchApi
+        } catch (err) {
+          toast.error(
+            err.message || "Não foi possível cancelar a solicitação."
+          );
+        } finally {
+          setLoading(false); // Desativa loading geral
+          setConfirmationState({
+            open: false,
+            title: "",
+            description: "",
+            onConfirm: () => {},
+          }); // Fecha o modal de confirmação
         }
-        setLoading(false);
-        setConfirmationState({ open: false, onConfirm: () => {} });
       },
     });
   };
 
-  const getStatusText = (status) => {
+  // Handler para abrir o diálogo de seleção de ideia para Match
+  const handleOpenMatchDialog = () => {
+    setSelectedIdeiaForMatch(null); // Limpa seleção anterior
+    setMatchedProfessor(null); // Limpa match anterior
+    setIsMatchDialogOpen(true);
+  };
+
+  // Handler chamado pelo SelectIdeiaDialog para buscar o match
+  const handleFindMatch = async (ideiaId) => {
+    setIsFindingMatch(true); // Ativa loading específico do match
+    setError(""); // Limpa erros anteriores
+    try {
+      const matchResult = await findProfessorMatch(ideiaId);
+      if (matchResult) {
+        setMatchedProfessor(matchResult);
+        setSelectedIdeiaForMatch(ideiaId); // Guarda a ideia selecionada
+        setIsMatchDialogOpen(false); // Fecha o diálogo de seleção
+        setIsMatchResultDialogOpen(true); // Abre o diálogo de resultado
+      }
+      // Erro 404 (sem match) é tratado no catch
+    } catch (err) {
+      // Exibe a mensagem de erro específica retornada pela API
+      toast.error("Não foi possível encontrar um match", {
+        description:
+          err.message || "Verifique as áreas da ideia ou tente mais tarde.",
+      });
+      // Mantém o diálogo de seleção aberto em caso de erro
+    } finally {
+      setIsFindingMatch(false); // Desativa loading específico
+    }
+  };
+
+  // Função para obter o componente Badge do status
+  const getStatusBadge = (status) => {
     switch (status) {
       case 0:
         return <Badge variant="secondary">Pendente</Badge>;
@@ -162,48 +224,90 @@ export default function SolicitarOrientacaoPage() {
     }
   };
 
-  if (loading && !solicitacoes.length) {
-    return <div>Carregando...</div>;
+  // Renderiza loading inicial
+  if (loading && !solicitacoes.length && !professores.length) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto py-8 space-y-8">
+      {/* Card Principal: Solicitar Orientação */}
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Solicitar Orientação</CardTitle>
-          <CardDescription>
-            Escolha uma de suas ideias de TCC e um professor disponível para
-            enviar uma solicitação de orientação.
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Solicitar Orientação</CardTitle>
+              <CardDescription>
+                Escolha uma ideia e um professor disponível ou use o Match.
+              </CardDescription>
+            </div>
+            {/* Botão Encontrar Match */}
+            <Button
+              variant="outline"
+              onClick={handleOpenMatchDialog}
+              disabled={loading || isFindingMatch || ideias.length === 0} // Desabilita se estiver carregando ou buscando match ou sem ideias
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Encontrar Match
+            </Button>
+          </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="space-y-2">
-              <Label>Professor</Label>
+              <Label>Professor Disponível</Label>
               <Select
                 onValueChange={setSelectedProfessor}
                 value={selectedProfessor}
+                disabled={loading} // Desabilita durante o loading geral
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um professor..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {professores
-                    .filter((prof) => prof.usuario)
-                    .map((prof) => (
-                      <SelectItem
-                        key={prof.id_professor}
-                        value={prof.id_professor.toString()}
-                      >
-                        {prof.usuario.nome}
-                      </SelectItem>
-                    ))}
+                  {professores.length > 0 ? (
+                    professores
+                      .filter((prof) => prof.usuario) // Garante que tem dados de usuário
+                      .map((prof) => (
+                        <SelectItem
+                          key={prof.id_professor}
+                          value={prof.id_professor.toString()}
+                          // Desabilita se o professor não tiver vagas
+                          disabled={
+                            prof.limite_orientacoes -
+                              (prof.orientandos_atuais || 0) <=
+                            0
+                          }
+                        >
+                          {prof.usuario.nome} (Vagas:{" "}
+                          {Math.max(
+                            0,
+                            prof.limite_orientacoes -
+                              (prof.orientandos_atuais || 0)
+                          )}
+                          )
+                        </SelectItem>
+                      ))
+                  ) : (
+                    <SelectItem value="disabled" disabled>
+                      Nenhum professor disponível encontrado.
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Minha Ideia de TCC</Label>
-              <Select onValueChange={setSelectedIdeia} value={selectedIdeia}>
+              <Label>Minha Ideia de TCC (Disponível)</Label>
+              <Select
+                onValueChange={setSelectedIdeia}
+                value={selectedIdeia}
+                disabled={loading} // Desabilita durante o loading geral
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione sua ideia..." />
                 </SelectTrigger>
@@ -226,15 +330,24 @@ export default function SolicitarOrientacaoPage() {
               </Select>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <p></p>
-            <Button type="submit" disabled={loading || ideias.length === 0}>
-              {loading ? "Enviando..." : "Enviar Solicitação"}
+          <CardFooter className="flex justify-end">
+            <Button
+              type="submit"
+              disabled={
+                loading ||
+                ideias.length === 0 ||
+                !selectedProfessor ||
+                !selectedIdeia
+              } // Desabilita se carregando, sem ideias ou sem seleção
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Enviar Solicitação Manual
             </Button>
           </CardFooter>
         </form>
       </Card>
 
+      {/* Card: Minhas Solicitações */}
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle>Minhas Solicitações</CardTitle>
@@ -250,7 +363,7 @@ export default function SolicitarOrientacaoPage() {
                 <TableHead>Ideia de TCC</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Ações</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -266,19 +379,16 @@ export default function SolicitarOrientacaoPage() {
                     <TableCell>
                       {new Date(
                         solicitacao.data_solicitacao
-                      ).toLocaleDateString()}
+                      ).toLocaleDateString("pt-BR")}
                     </TableCell>
-                    <TableCell>{getStatusText(solicitacao.status)}</TableCell>
-                    <TableCell>
-                      {solicitacao.status === 0 && (
+                    <TableCell>{getStatusBadge(solicitacao.status)}</TableCell>
+                    <TableCell className="text-right">
+                      {solicitacao.status === 0 && ( // Apenas pendentes podem ser canceladas
                         <Button
-                          variant="link"
-                          className="text-red-600 p-0 h-auto"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleOpenCancelModal(solicitacao);
-                          }}
-                          disabled={loading}
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleOpenCancelModal(solicitacao)}
+                          disabled={loading} // Desabilita durante o loading geral
                         >
                           Cancelar
                         </Button>
@@ -288,7 +398,7 @@ export default function SolicitarOrientacaoPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={5} className="text-center h-24">
                     Você ainda não enviou nenhuma solicitação.
                   </TableCell>
                 </TableRow>
@@ -297,22 +407,42 @@ export default function SolicitarOrientacaoPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Diálogo de Confirmação de Cancelamento */}
       <ConfirmationDialog
         open={confirmationState.open}
-        onOpenChange={(isOpen) =>
-          !isOpen &&
-          setConfirmationState({
-            open: false,
-            title: "",
-            description: "",
-            onConfirm: () => {},
-          })
+        onOpenChange={
+          (isOpen) =>
+            !isOpen &&
+            setConfirmationState({
+              open: false,
+              title: "",
+              description: "",
+              onConfirm: () => {},
+            }) // Reset state on close
         }
         title={confirmationState.title}
         description={confirmationState.description}
         onConfirm={confirmationState.onConfirm}
-        confirmText={confirmationState.confirmText}
-        confirmVariant={confirmationState.confirmVariant}
+        confirmText={confirmationState.confirmText || "Confirmar"} // Default confirm text
+        confirmVariant={confirmationState.confirmVariant} // Pass variant if needed
+      />
+
+      {/* Diálogo para Selecionar Ideia (Match) */}
+      <SelectIdeiaDialog
+        open={isMatchDialogOpen}
+        onClose={() => setIsMatchDialogOpen(false)}
+        ideias={ideias} // Passa apenas ideias disponíveis
+        onFindMatch={handleFindMatch}
+      />
+
+      {/* Diálogo para Mostrar Resultado do Match */}
+      <MatchResultDialog
+        open={isMatchResultDialogOpen}
+        onClose={() => setIsMatchResultDialogOpen(false)}
+        professor={matchedProfessor}
+        ideiaId={selectedIdeiaForMatch}
+        onSendRequest={handleSendRequest} // Reutiliza o handler geral
       />
     </div>
   );
