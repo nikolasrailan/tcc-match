@@ -44,9 +44,9 @@ const SelectIdeiaDialog = ({ open, onClose, ideias, onFindMatch }) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent aria-labelledby={titleId}>
         <DialogHeader>
-          <DialogTitle>Encontrar Professor Ideal</DialogTitle>
+          <DialogTitle id={titleId}>Encontrar Professor Ideal</DialogTitle>
           <DialogDescription>
             Selecione uma das suas ideias disponíveis para encontrar o professor
             mais compatível com base nas áreas de interesse.

@@ -42,9 +42,9 @@ const MatchResultDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent aria-labelledby={titleId}>
         <DialogHeader>
-          <DialogTitle>Professor Recomendado</DialogTitle>
+          <DialogTitle id={titleId}>Professor Recomendado</DialogTitle>
           <DialogDescription>
             Encontramos um professor com áreas de interesse compatíveis com sua
             ideia:

@@ -28,7 +28,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
+  DialogTitle, // Importar DialogTitle
   DialogFooter,
   DialogClose,
   DialogDescription,
@@ -75,6 +75,7 @@ const OrientacaoCard = ({
     title: "",
     description: "",
     onConfirm: () => {},
+    isSubmitting: false, // Adicionado estado de loading
   });
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [feedbackActionType, setFeedbackActionType] = useState(null); // 'cancel', 'finalize', 'confirm-finalize'
@@ -82,7 +83,7 @@ const OrientacaoCard = ({
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
   // Gera IDs únicos para acessibilidade dos diálogos
-  const feedbackDialogTitleId = `feedback-dialog-title-${orientacao.id_orientacao}`;
+  const feedbackDialogTitleId = React.useId(); // Use React.useId() para gerar IDs únicos
 
   const [formData, setFormData] = useState({
     url_projeto: orientacao.url_projeto || "",
@@ -157,8 +158,9 @@ const OrientacaoCard = ({
       open: true,
       title: `Confirmar Ação`,
       description: `Tem certeza que deseja ${actionText} esta reunião?`,
+      isSubmitting: false, // Reseta loading state
       onConfirm: async () => {
-        setIsSubmittingAction(true); // Ativa loading específico da ação
+        setConfirmationState((prev) => ({ ...prev, isSubmitting: true })); // Ativa loading específico da ação
         try {
           await atualizarReuniao(reuniaoId, { status });
           toast.success(
@@ -170,13 +172,13 @@ const OrientacaoCard = ({
         } catch (error) {
           toast.error(`Erro ao ${actionText} reunião: ${error.message}`);
         } finally {
-          setIsSubmittingAction(false); // Desativa loading da ação
           // Fecha e reseta o modal de confirmação
           setConfirmationState({
             open: false,
             title: "",
             description: "",
             onConfirm: () => {},
+            isSubmitting: false,
           });
         }
       },
@@ -192,8 +194,9 @@ const OrientacaoCard = ({
       title: "Solicitar Finalização",
       description:
         "Tem certeza que deseja solicitar a finalização desta orientação? O professor precisará confirmar.",
+      isSubmitting: false,
       onConfirm: async () => {
-        setIsSubmittingAction(true);
+        setConfirmationState((prev) => ({ ...prev, isSubmitting: true }));
         try {
           const result = await solicitarFinalizacaoOrientacao(
             orientacao.id_orientacao
@@ -201,7 +204,6 @@ const OrientacaoCard = ({
           toast.success(
             result.message || "Solicitação de finalização enviada."
           );
-          // FIX: Verifica se onActionSuccess é uma função antes de chamar
           if (typeof onActionSuccess === "function") {
             onActionSuccess(); // Atualiza a página de orientações
           } else {
@@ -210,13 +212,12 @@ const OrientacaoCard = ({
         } catch (error) {
           toast.error(`Erro ao solicitar finalização: ${error.message}`);
         } finally {
-          setIsSubmittingAction(false);
-          // Fecha e reseta o modal de confirmação
           setConfirmationState({
             open: false,
             title: "",
             description: "",
             onConfirm: () => {},
+            isSubmitting: false,
           });
         }
       },
@@ -237,8 +238,9 @@ const OrientacaoCard = ({
       title: "Solicitar Cancelamento",
       description:
         "Tem certeza que deseja solicitar o cancelamento desta orientação? O professor precisará confirmar.",
+      isSubmitting: false,
       onConfirm: async () => {
-        setIsSubmittingAction(true);
+        setConfirmationState((prev) => ({ ...prev, isSubmitting: true }));
         try {
           const result = await solicitarCancelamentoOrientacao(
             orientacao.id_orientacao
@@ -246,7 +248,6 @@ const OrientacaoCard = ({
           toast.success(
             result.message || "Solicitação de cancelamento enviada."
           );
-          // FIX: Verifica se onActionSuccess é uma função antes de chamar
           if (typeof onActionSuccess === "function") {
             onActionSuccess(); // Atualiza a página de orientações
           } else {
@@ -255,13 +256,12 @@ const OrientacaoCard = ({
         } catch (error) {
           toast.error(`Erro ao solicitar cancelamento: ${error.message}`);
         } finally {
-          setIsSubmittingAction(false);
-          // Fecha e reseta o modal de confirmação
           setConfirmationState({
             open: false,
             title: "",
             description: "",
             onConfirm: () => {},
+            isSubmitting: false,
           });
         }
       },
@@ -291,7 +291,7 @@ const OrientacaoCard = ({
 
   // Submete o feedback (e a ação correspondente) do modal de feedback
   const handleFeedbackSubmit = async () => {
-    setIsSubmittingAction(true);
+    setIsSubmittingAction(true); // Ativa loading geral de ações do card
     try {
       let result;
       let successMessage = "";
@@ -300,8 +300,7 @@ const OrientacaoCard = ({
       if (feedbackActionType === "finalize") {
         actionVerb = "finalizar";
         result = await finalizarOrientacao(orientacao.id_orientacao, {
-          // Nota: A API espera o feedback no body, mesmo que a rota não use
-          // Isso pode precisar de ajuste na API se ela não consumir o body aqui
+          // Nota: API pode precisar de ajuste se não consumir o body aqui
         });
         successMessage = result.message || "Orientação finalizada com sucesso!";
       } else if (feedbackActionType === "confirm-finalize") {
@@ -332,19 +331,18 @@ const OrientacaoCard = ({
 
       toast.success(successMessage);
       setFeedbackModalOpen(false); // Fecha o modal de feedback
-      // FIX: Verifica se onActionSuccess é uma função antes de chamar
       if (typeof onActionSuccess === "function") {
         onActionSuccess(); // Atualiza a página de orientações
       } else {
         console.warn("onActionSuccess is not a function in OrientacaoCard");
       }
     } catch (error) {
-      const actionText = feedbackActionType?.includes("finalize") // Add safe check
+      const actionText = feedbackActionType?.includes("finalize")
         ? "finalizar"
         : "encerrar";
       toast.error(`Erro ao ${actionText} orientação: ${error.message}`);
     } finally {
-      setIsSubmittingAction(false); // Desativa loading da ação
+      setIsSubmittingAction(false); // Desativa loading geral de ações
     }
   };
 
@@ -762,13 +760,13 @@ const OrientacaoCard = ({
             title: "",
             description: "",
             onConfirm: () => {},
+            isSubmitting: false, // Ensure loading state is reset
           })
         }
         title={confirmationState.title}
         description={confirmationState.description}
         onConfirm={confirmationState.onConfirm}
-        isSubmitting={isSubmittingAction} // Passa o estado de loading
-        // A prop "title" será usada pelo ConfirmationDialog para seu DialogTitle
+        isSubmitting={confirmationState.isSubmitting} // Passa o estado de loading
       />
 
       {/* Modal para Criar/Editar Reunião */}
@@ -776,7 +774,6 @@ const OrientacaoCard = ({
         open={reuniaoModalState.open}
         onOpenChange={(isOpen) => !isOpen && handleCloseReuniaoModal()}
       >
-        {/* ReuniaoModal é responsável pelo seu próprio DialogTitle */}
         <ReuniaoModal
           orientacaoId={orientacao.id_orientacao} // Passa o ID da orientação atual
           initialData={reuniaoModalState.initialData}
@@ -790,7 +787,6 @@ const OrientacaoCard = ({
 
       {/* Modal para Visualizar/Gerenciar Tópicos */}
       <Dialog open={topicosModalOpen} onOpenChange={setTopicosModalOpen}>
-        {/* TopicosDialog é responsável pelo seu próprio DialogTitle */}
         <TopicosDialog
           orientacao={orientacao} // Passa a orientação atual
           userRole={userRole}
@@ -802,9 +798,10 @@ const OrientacaoCard = ({
 
       {/* Modal UNIFICADO para feedback de Finalização/Cancelamento */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
-        {/* FIX: Adiciona aria-labelledby e id ao DialogTitle */}
+        {/* FIX: Adiciona aria-labelledby */}
         <DialogContent aria-labelledby={feedbackDialogTitleId}>
           <DialogHeader>
+            {/* FIX: Adiciona id ao DialogTitle */}
             <DialogTitle id={feedbackDialogTitleId}>
               {
                 feedbackActionType === "finalize" // Finalização Direta (Professor)
@@ -836,6 +833,7 @@ const OrientacaoCard = ({
                   : "Motivo do encerramento, próximos passos, etc."
               }
               rows={4}
+              disabled={isSubmittingAction} // Disable textarea while submitting
             />
           </div>
           <DialogFooter>
