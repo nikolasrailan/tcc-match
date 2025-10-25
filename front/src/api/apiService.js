@@ -88,7 +88,7 @@ async function fetchApi(endpoint, options = {}) {
 // --- Funções de Reunião ---
 export const getReunioes = (id_orientacao) =>
   fetchApi(`/reunioes/orientacao/${id_orientacao}`);
-export const getReunioesProfessor = () => fetchApi("/reunioes/professor"); // Nova função
+export const getReunioesProfessor = () => fetchApi("/reunioes/professor");
 export const criarReuniao = (id_orientacao, data) =>
   fetchApi(`/reunioes/orientacao/${id_orientacao}`, {
     method: "POST",
@@ -140,7 +140,6 @@ export const confirmarCancelamentoOrientacao = (id, feedback = null) =>
   });
 export const cancelarOrientacaoDiretoProfessor = (id, feedback = null) =>
   fetchApi(`/orientacoes/${id}/cancelar-direto`, {
-    // Nova função API
     method: "PATCH",
     body: JSON.stringify({ feedback_cancelamento: feedback }),
   });
@@ -295,3 +294,7 @@ export const deletarAreaInteresse = (id) =>
   fetchApi(`/areas-interesse/${id}`, {
     method: "DELETE",
   });
+
+// ***  FUNÇÃO PARA FINALIZAR ORIENTAÇÃO ***
+export const finalizarOrientacao = (id) =>
+  fetchApi(`/orientacoes/${id}/finalizar`, { method: "PATCH" });

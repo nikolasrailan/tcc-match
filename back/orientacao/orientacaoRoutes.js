@@ -9,21 +9,22 @@ router.get("/", orientacaoController.getOrientacao);
 
 router.patch("/:id", orientacaoController.updateOrientacao);
 
-// --- Rotas de Cancelamento/Encerramento ---
+// --- Rotas de Finalização e Cancelamento ---
+// Rota PATCH para o Professor finalizar a orientação
+router.patch("/:id/finalizar", orientacaoController.finalizarOrientacao);
 
-// Rota para o ALUNO solicitar cancelamento
 router.patch(
   "/:id/solicitar-cancelamento",
   orientacaoController.solicitarCancelamento
 );
 
-// Rota para o PROFESSOR confirmar o cancelamento solicitado pelo aluno
+// Rota PATCH para o Professor confirmar cancelamento solicitado pelo aluno
 router.patch(
   "/:id/confirmar-cancelamento",
   orientacaoController.confirmarCancelamento
 );
 
-// Rota para o PROFESSOR cancelar/encerrar diretamente a orientação
+// Rota PATCH para o Professor cancelar diretamente (sem solicitação do aluno)
 router.patch(
   "/:id/cancelar-direto",
   orientacaoController.cancelarOrientacaoProfessor
