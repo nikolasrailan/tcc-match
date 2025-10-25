@@ -1,6 +1,11 @@
 // Função genérica para realizar chamadas à API
 async function fetchApi(endpoint, options = {}) {
-  const token = localStorage.getItem("token");
+  let token = null;
+  // Garante que o código só rode no client-side para acessar localStorage
+  if (typeof window !== "undefined") {
+    token = localStorage.getItem("token");
+  }
+
   const headers = {
     "Content-Type": "application/json",
     ...options.headers,
@@ -32,38 +37,50 @@ async function fetchApi(endpoint, options = {}) {
               .join("\n");
           }
         } catch (e) {
-          errorData.message = `Erro ${response.status}: ${response.statusText}`;
+          // Se não conseguir parsear o JSON do erro, usa o statusText
+          errorData.message = `Erro ${response.status}: ${
+            response.statusText || "Erro desconhecido"
+          }`;
+        }
+      } else {
+        // Se não for JSON, tenta pegar o texto do erro
+        try {
+          const textError = await response.text();
+          if (textError) {
+            errorData.message = textError;
+          }
+        } catch (e) {
+          // Mantém a mensagem original se não conseguir ler o texto
+          errorData.message = `Erro ${response.status}: ${
+            response.statusText || "Erro desconhecido"
+          }`;
         }
       }
       throw new Error(errorData.message);
     }
 
+    // Handle No Content response
     if (response.status === 204) {
-      return { success: true };
+      return { success: true }; // Ou null, dependendo de como você quer tratar
     }
 
-    if (
-      response.status === 200 &&
-      (!contentType || !contentType.includes("application/json"))
-    ) {
-      try {
-        const textResponse = await response.text();
-        if (textResponse) {
-          return { message: textResponse };
-        }
-        return { success: true };
-      } catch (e) {
-        return { success: true };
-      }
-    }
-
+    // Tenta parsear JSON se o content-type for adequado
     if (contentType && contentType.includes("application/json")) {
       return await response.json();
     }
 
-    return { success: true, status: response.status };
+    // Se não for JSON, tenta retornar como texto (para mensagens simples)
+    try {
+      const textResponse = await response.text();
+      // Retorna um objeto com a mensagem se houver texto, senão um sucesso genérico
+      return textResponse ? { message: textResponse } : { success: true };
+    } catch (e) {
+      // Se não conseguir ler como texto (improvável aqui), retorna sucesso genérico
+      return { success: true };
+    }
   } catch (error) {
-    console.error(`Erro na chamada da API para ${endpoint}:`, error.message);
+    console.error(`Erro na chamada da API para ${endpoint}:`, error);
+    // Re-throw para que a função chamadora possa tratar
     throw error;
   }
 }
@@ -111,7 +128,7 @@ export const updateOrientacao = (id, data) =>
     body: JSON.stringify(data),
   });
 
-// Novas funções para cancelamento
+// Funções de Cancelamento/Encerramento de Orientação
 export const solicitarCancelamentoOrientacao = (id) =>
   fetchApi(`/orientacoes/${id}/solicitar-cancelamento`, {
     method: "PATCH",
@@ -121,9 +138,9 @@ export const confirmarCancelamentoOrientacao = (id, feedback = null) =>
     method: "PATCH",
     body: JSON.stringify({ feedback_cancelamento: feedback }),
   });
-// Função para cancelamento direto pelo professor
 export const cancelarOrientacaoDiretoProfessor = (id, feedback = null) =>
   fetchApi(`/orientacoes/${id}/cancelar-direto`, {
+    // Nova função API
     method: "PATCH",
     body: JSON.stringify({ feedback_cancelamento: feedback }),
   });

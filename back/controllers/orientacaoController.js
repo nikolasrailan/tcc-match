@@ -4,9 +4,9 @@ const {
   Professor,
   IdeiaTcc,
   Usuario,
-  sequelize, // Adiciona sequelize aqui
+  sequelize,
 } = require("../models");
-const { Op, Sequelize } = require("sequelize"); // Importa Sequelize também se Op já estiver sendo usado
+const { Op, Sequelize } = require("sequelize");
 
 const orientacaoController = {
   async getOrientacao(req, res) {
@@ -32,6 +32,7 @@ const orientacaoController = {
           return res.status(200).json([]);
         }
       } else {
+        // Se não for aluno nem professor (ex: admin), retorna vazio por enquanto
         return res.status(200).json([]);
       }
 
@@ -149,7 +150,7 @@ const orientacaoController = {
 
   async solicitarCancelamento(req, res) {
     try {
-      const { id } = req.params;
+      const { id } = req.params; // id_orientacao
       const idUsuario = req.user.id;
 
       const aluno = await Aluno.findOne({ where: { id_usuario: idUsuario } });
@@ -191,10 +192,10 @@ const orientacaoController = {
   },
 
   async confirmarCancelamento(req, res) {
-    // Confirma cancelamento solicitado pelo ALUNO
+    // Confirma cancelamento solicitado pelo ALUN
     const t = await sequelize.transaction();
     try {
-      const { id } = req.params;
+      const { id } = req.params; // id_orientacao
       const { feedback_cancelamento } = req.body;
       const idUsuario = req.user.id;
 
@@ -243,7 +244,6 @@ const orientacaoController = {
           .json({ error: "Ideia de TCC associada não encontrada." });
       }
 
-      // Atualiza Orientação
       await orientacao.update(
         {
           status: "encerrado",
@@ -254,7 +254,6 @@ const orientacaoController = {
         { transaction: t }
       );
 
-      // Volta o status da IdeiaTcc para 0 (Pendente/Disponível)
       await ideia.update({ status: 0 }, { transaction: t });
 
       await t.commit();
@@ -269,12 +268,11 @@ const orientacaoController = {
     }
   },
 
-  // Nova função para cancelamento direto pelo professor
   async cancelarOrientacaoProfessor(req, res) {
     const t = await sequelize.transaction();
     try {
-      const { id } = req.params; // id_orientacao
-      const { feedback_cancelamento } = req.body; // Feedback opcional
+      const { id } = req.params;
+      const { feedback_cancelamento } = req.body;
       const idUsuario = req.user.id;
 
       const professor = await Professor.findOne({
@@ -284,7 +282,7 @@ const orientacaoController = {
         await t.rollback();
         return res
           .status(403)
-          .json({ error: "Apenas professores podem cancelar orientações." });
+          .json({ error: "Apenas professores podem encerrar orientações." });
       }
 
       const orientacao = await Orientacao.findOne({
@@ -297,7 +295,6 @@ const orientacaoController = {
         });
       }
 
-      // Verifica se a orientação já não está encerrada/finalizada
       if (
         ["cancelado", "encerrado", "finalizado"].includes(orientacao.status)
       ) {
@@ -307,7 +304,15 @@ const orientacaoController = {
         });
       }
 
-      // Encontra a ideia associada para reverter o status
+      // Verifica se não há uma solicitação de cancelamento PENDENTE do aluno
+      if (orientacao.solicitacao_cancelamento === "aluno") {
+        await t.rollback();
+        return res.status(400).json({
+          error:
+            "Há uma solicitação de cancelamento do aluno pendente. Use a rota de confirmação.",
+        });
+      }
+
       const ideia = await IdeiaTcc.findByPk(orientacao.id_ideia_tcc);
       if (!ideia) {
         await t.rollback();
@@ -316,18 +321,16 @@ const orientacaoController = {
           .json({ error: "Ideia de TCC associada não encontrada." });
       }
 
-      // Atualiza Orientação
       await orientacao.update(
         {
           status: "encerrado",
           data_fim: new Date(),
           feedback_cancelamento: feedback_cancelamento || null,
-          solicitacao_cancelamento: "professor", // Indica que foi o professor quem cancelou
+          solicitacao_cancelamento: "professor",
         },
         { transaction: t }
       );
 
-      // Volta o status da IdeiaTcc para 0 (Pendente/Disponível)
       await ideia.update({ status: 0 }, { transaction: t });
 
       await t.commit();
@@ -337,7 +340,7 @@ const orientacaoController = {
         .json({ message: "Orientação encerrada com sucesso pelo professor." });
     } catch (error) {
       await t.rollback();
-      console.error("Erro ao cancelar orientação pelo professor:", error);
+      console.error("Erro ao encerrar orientação pelo professor:", error);
       res
         .status(500)
         .json({ error: "Ocorreu um erro ao encerrar a orientação." });

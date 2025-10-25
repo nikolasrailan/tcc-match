@@ -4,8 +4,9 @@ import {
   getReunioes,
   atualizarReuniao,
   getTopicos,
-  solicitarCancelamentoOrientacao, // Importa a nova função
-  confirmarCancelamentoOrientacao, // Importa a nova função
+  solicitarCancelamentoOrientacao,
+  confirmarCancelamentoOrientacao,
+  cancelarOrientacaoDiretoProfessor, // Importa a nova função API
 } from "@/api/apiService";
 import {
   Card,
@@ -34,14 +35,20 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"; // Importa DropdownMenu
-import { Settings, Ban, MessageSquareWarning, Loader2 } from "lucide-react"; // Importa ícones
+} from "@/components/ui/dropdown-menu";
+import {
+  Settings,
+  Ban,
+  MessageSquareWarning,
+  Loader2,
+  XCircle,
+} from "lucide-react"; // Adiciona XCircle
 import ConfirmationDialog from "../reuniao/ConfirmacaoDialog";
 import ReuniaoModal from "../reuniao/ReuniaoModal";
 import TopicosDialog from "../topico/TopicoDialog";
 import ReunioesSection from "../reuniao/ReuniaoSecao";
 import TopicosSection from "../topico/TopicosSecao";
-import { toast } from "sonner"; // Para notificações
+import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const OrientacaoCard = ({
@@ -68,39 +75,32 @@ const OrientacaoCard = ({
     useState(false);
   const [feedbackCancelamento, setFeedbackCancelamento] = useState("");
   const [isSubmittingCancelamento, setIsSubmittingCancelamento] =
-    useState(false); // Loading state
+    useState(false);
 
   const [formData, setFormData] = useState({
     url_projeto: orientacao.url_projeto || "",
     observacoes: orientacao.observacoes || "",
-    // Não incluir status ou solicitação_cancelamento aqui para evitar conflitos
   });
 
-  // Atualiza o formData se a orientação mudar (caso de abas do professor)
   useEffect(() => {
     setFormData({
       url_projeto: orientacao.url_projeto || "",
       observacoes: orientacao.observacoes || "",
     });
-    // Reseta o estado de edição se a orientação mudar
     setIsEditing(false);
   }, [orientacao]);
 
   const fetchReunioes = useCallback(async () => {
     if (orientacao.id_orientacao) {
       const data = await getReunioes(orientacao.id_orientacao);
-      if (data) {
-        setReunioes(data);
-      }
+      if (data) setReunioes(data);
     }
   }, [orientacao.id_orientacao]);
 
   const fetchTopicos = useCallback(async () => {
     if (orientacao.id_orientacao) {
       const data = await getTopicos(orientacao.id_orientacao);
-      if (data) {
-        setTopicos(data);
-      }
+      if (data) setTopicos(data);
     }
   }, [orientacao.id_orientacao]);
 
@@ -115,33 +115,24 @@ const OrientacaoCard = ({
   };
 
   const handleUpdateDetails = () => {
-    // Chama a função onUpdate passada como prop, apenas com os dados editáveis
     onUpdate(orientacao.id_orientacao, formData);
     setIsEditing(false);
   };
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = () =>
     setReuniaoModalState({ open: true, initialData: null });
-  };
-
-  const handleOpenEditModal = (reuniao) => {
+  const handleOpenEditModal = (reuniao) =>
     setReuniaoModalState({ open: true, initialData: reuniao });
-  };
-
-  const handleCloseReuniaoModal = () => {
+  const handleCloseReuniaoModal = () =>
     setReuniaoModalState({ open: false, initialData: null });
-  };
 
   const handleReuniaoStatusChange = (reuniaoId, status) => {
     const actionText =
       status === "realizada" ? "marcar como realizada" : "cancelar";
-    const title = `Confirmar Ação`;
-    const description = `Tem certeza que deseja ${actionText} esta reunião?`;
-
     setConfirmationState({
       open: true,
-      title,
-      description,
+      title: `Confirmar Ação`,
+      description: `Tem certeza que deseja ${actionText} esta reunião?`,
       onConfirm: async () => {
         try {
           await atualizarReuniao(reuniaoId, { status });
@@ -165,7 +156,9 @@ const OrientacaoCard = ({
     });
   };
 
-  // --- Funções de Cancelamento ---
+  // --- Funções de Cancelamento/Encerramento ---
+
+  // Aluno solicita cancelamento
   const handleSolicitarCancelamento = () => {
     setConfirmationState({
       open: true,
@@ -181,7 +174,7 @@ const OrientacaoCard = ({
           toast.success(
             result.message || "Solicitação de cancelamento enviada."
           );
-          onCancelSuccess(); // Chama a função para atualizar a lista de orientações
+          onCancelSuccess(); // Atualiza a lista de orientações na página pai
         } catch (error) {
           toast.error(`Erro ao solicitar cancelamento: ${error.message}`);
         } finally {
@@ -197,29 +190,41 @@ const OrientacaoCard = ({
     });
   };
 
-  const handleOpenConfirmarCancelamentoModal = () => {
+  // Professor abre o modal para dar feedback (seja confirmando ou encerrando direto)
+  const handleOpenFeedbackModalProfessor = () => {
     setFeedbackCancelamento(""); // Limpa feedback anterior
     setCancelamentoFeedbackModalOpen(true);
   };
 
-  const handleConfirmarCancelamento = async () => {
+  // Professor submete o feedback (seja confirmando ou encerrando direto)
+  const submitProfessorCancellationFeedback = async () => {
     setIsSubmittingCancelamento(true);
     try {
-      const result = await confirmarCancelamentoOrientacao(
-        orientacao.id_orientacao,
-        feedbackCancelamento
-      );
+      let result;
+      // Se há solicitação do aluno, confirma
+      if (orientacao.solicitacao_cancelamento === "aluno") {
+        result = await confirmarCancelamentoOrientacao(
+          orientacao.id_orientacao,
+          feedbackCancelamento
+        );
+      } else {
+        // Senão, é o professor encerrando diretamente
+        result = await cancelarOrientacaoDiretoProfessor(
+          orientacao.id_orientacao,
+          feedbackCancelamento
+        );
+      }
       toast.success(result.message || "Orientação encerrada com sucesso.");
       setCancelamentoFeedbackModalOpen(false);
-      onCancelSuccess(); // Chama a função para atualizar a lista de orientações
+      onCancelSuccess(); // Atualiza a lista de orientações na página pai
     } catch (error) {
-      toast.error(`Erro ao confirmar cancelamento: ${error.message}`);
+      toast.error(`Erro ao encerrar orientação: ${error.message}`);
     } finally {
       setIsSubmittingCancelamento(false);
     }
   };
 
-  // ------------------------------
+  // ----------------------------------------
 
   const newTopicsCount =
     userRole === "professor"
@@ -230,34 +235,38 @@ const OrientacaoCard = ({
     if (solicitacaoCancelamento === "aluno") {
       return <Badge variant="destructive">Cancelamento Solicitado</Badge>;
     }
+    // Mostra "Encerrado pelo Professor" se foi cancelamento direto
+    if (status === "encerrado" && solicitacaoCancelamento === "professor") {
+      return <Badge variant="destructive">Encerrado (Professor)</Badge>;
+    }
+    // Mostra "Encerrado (Aluno)" se foi confirmado pelo professor após solicitação do aluno
+    if (status === "encerrado" && solicitacaoCancelamento === "nenhuma") {
+      // "nenhuma" pois é resetado após confirmação
+      return <Badge variant="destructive">Encerrado (Aluno)</Badge>;
+    }
     switch (status) {
       case "em desenvolvimento":
         return <Badge>Em Desenvolvimento</Badge>;
       case "finalizado":
         return <Badge className="bg-green-500">Finalizado</Badge>;
-      case "cancelado":
-        return <Badge variant="destructive">Cancelado</Badge>;
       case "pausado":
         return <Badge variant="secondary">Pausado</Badge>;
-      case "encerrado": // Novo status
-        return <Badge variant="destructive">Encerrado</Badge>;
+      case "encerrado":
+        return <Badge variant="destructive">Encerrado</Badge>; // Caso genérico (fallback)
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  // Desabilita edição e outras ações se houver solicitação de cancelamento ou se estiver encerrado/cancelado
   const isActionDisabled =
     orientacao.solicitacao_cancelamento !== "nenhuma" ||
-    ["cancelado", "encerrado"].includes(orientacao.status);
+    ["cancelado", "encerrado", "finalizado"].includes(orientacao.status); // Adicionado 'finalizado'
 
   return (
     <Card className="max-w-4xl mx-auto relative">
-      {" "}
-      {/* Adiciona relative para posicionar o dropdown */}
-      {/* Botão de Engrenagem e Dropdown (Apenas Aluno e se não desabilitado) */}
-      {userRole === "aluno" && !isActionDisabled && (
-        <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10">
+        {/* Dropdown Aluno */}
+        {userRole === "aluno" && !isActionDisabled && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -283,8 +292,37 @@ const OrientacaoCard = ({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      )}
+        )}
+        {/* Dropdown Professor */}
+        {userRole === "professor" && !isActionDisabled && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isSubmittingCancelamento}
+              >
+                {isSubmittingCancelamento ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Settings className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-900/50"
+                onClick={handleOpenFeedbackModalProfessor} // Abre modal para encerrar direto
+                disabled={isSubmittingCancelamento}
+              >
+                <XCircle className="mr-2 h-4 w-4" /> {/* Ícone diferente */}
+                Encerrar Orientação
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
       <CardHeader>
         <CardTitle>{orientacao.ideiaTcc.titulo}</CardTitle>
         <CardDescription>
@@ -294,33 +332,35 @@ const OrientacaoCard = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Alerta de Solicitação de Cancelamento */}
+        {/* Alerta de Solicitação Pendente (Visível para ambos) */}
         {orientacao.solicitacao_cancelamento === "aluno" && (
           <Alert variant="destructive">
             <MessageSquareWarning className="h-4 w-4" />
-            <AlertTitle>Solicitação de Cancelamento</AlertTitle>
+            <AlertTitle>Solicitação de Cancelamento Pendente</AlertTitle>
             <AlertDescription>
               {userRole === "aluno"
-                ? "Você solicitou o cancelamento desta orientação. Aguardando confirmação do professor."
+                ? "Você solicitou o cancelamento. Aguardando confirmação do professor."
                 : "O aluno solicitou o cancelamento desta orientação."}
             </AlertDescription>
+            {/* Botão de confirmação para o professor */}
             {userRole === "professor" && (
               <div className="mt-4 flex justify-end">
                 <Button
                   size="sm"
-                  onClick={handleOpenConfirmarCancelamentoModal}
+                  onClick={handleOpenFeedbackModalProfessor} // Abre modal para confirmar
                   disabled={isSubmittingCancelamento}
                 >
                   {isSubmittingCancelamento && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Aceitar Cancelamento
+                  Confirmar Cancelamento
                 </Button>
               </div>
             )}
           </Alert>
         )}
 
+        {/* Detalhes da Orientação */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Status</Label>
@@ -347,6 +387,7 @@ const OrientacaoCard = ({
           </div>
         </div>
 
+        {/* Campos Editáveis vs. Display */}
         {isEditing ? (
           <div className="space-y-4">
             <div>
@@ -402,11 +443,11 @@ const OrientacaoCard = ({
                 {orientacao.observacoes || "Nenhuma observação."}
               </p>
             </div>
-            {/* Mostra feedback de cancelamento se existir */}
+            {/* Mostra feedback de cancelamento/encerramento se existir */}
             {orientacao.feedback_cancelamento && (
               <div>
                 <Label className="text-destructive">
-                  Feedback de Cancelamento/Encerramento
+                  Feedback de Encerramento
                 </Label>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1 border border-dashed border-destructive/50 p-2 rounded">
                   {orientacao.feedback_cancelamento}
@@ -416,27 +457,31 @@ const OrientacaoCard = ({
           </div>
         )}
 
-        {/* Renderiza seções apenas se não estiver cancelado/encerrado */}
-        {!["cancelado", "encerrado"].includes(orientacao.status) && (
+        {/* Seções de Tópicos e Reuniões (ocultas se encerrado/cancelado) */}
+        {!["cancelado", "encerrado", "finalizado"].includes(
+          orientacao.status
+        ) && (
           <>
             <TopicosSection
               onOpen={() => setTopicosModalOpen(true)}
               newTopicsCount={newTopicsCount}
-              disabled={isActionDisabled} // Passa o estado desabilitado
+              disabled={isActionDisabled}
             />
-
             <ReunioesSection
               reunioes={reunioes}
               onOpenCreateModal={handleOpenCreateModal}
               onOpenEditModal={handleOpenEditModal}
               onStatusChange={handleReuniaoStatusChange}
-              disabled={isActionDisabled} // Passa o estado desabilitado
+              disabled={isActionDisabled}
             />
           </>
         )}
       </CardContent>
-      {/* Esconde botões de editar se estiver cancelado/encerrado */}
-      {!["cancelado", "encerrado"].includes(orientacao.status) && (
+
+      {/* Botões de Editar (ocultos se encerrado/cancelado/finalizado) */}
+      {!["cancelado", "encerrado", "finalizado"].includes(
+        orientacao.status
+      ) && (
         <CardFooter className="flex justify-end">
           {isEditing ? (
             <div className="flex gap-2">
@@ -461,6 +506,7 @@ const OrientacaoCard = ({
           )}
         </CardFooter>
       )}
+
       {/* --- Modais --- */}
       <ConfirmationDialog
         open={confirmationState.open}
@@ -500,7 +546,8 @@ const OrientacaoCard = ({
           topicosList={topicos}
         />
       </Dialog>
-      {/* Modal para feedback de cancelamento do professor */}
+
+      {/* Modal para feedback de cancelamento/encerramento do professor */}
       <Dialog
         open={cancelamentoFeedbackModalOpen}
         onOpenChange={setCancelamentoFeedbackModalOpen}
@@ -508,11 +555,13 @@ const OrientacaoCard = ({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Confirmar Cancelamento e Encerrar Orientação
+              {orientacao.solicitacao_cancelamento === "aluno"
+                ? "Confirmar Cancelamento"
+                : "Encerrar Orientação"}
             </DialogTitle>
             <DialogDescription>
-              A orientação será movida para o status "Encerrado". Você pode
-              adicionar um feedback opcional para o aluno sobre o motivo.
+              A orientação será movida para o status &quot;Encerrado&quot;.
+              Adicione um feedback opcional.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -535,7 +584,7 @@ const OrientacaoCard = ({
               Cancelar
             </Button>
             <Button
-              onClick={handleConfirmarCancelamento}
+              onClick={submitProfessorCancellationFeedback}
               disabled={isSubmittingCancelamento}
             >
               {isSubmittingCancelamento && (
