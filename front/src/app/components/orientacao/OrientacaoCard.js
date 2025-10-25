@@ -293,10 +293,12 @@ const OrientacaoCard = ({
       setFeedbackModalOpen(false);
       onActionSuccess();
     } catch (error) {
-      const actionText = feedbackActionType.includes("finalize")
+      const actionText = feedbackActionType?.includes("finalize")
         ? "finalizar"
         : "encerrar";
-      toast.error(`Erro ao ${actionText} orientação: ${error.message}`);
+      toast.error(
+        `Erro ao ${actionText || "processar"} orientação: ${error.message}`
+      );
     } finally {
       setIsSubmittingAction(false);
     }
@@ -735,40 +737,7 @@ const OrientacaoCard = ({
       {/* Modal UNIFICADO para feedback */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {
-                feedbackActionType === "finalize" // Finalização Direta (Professor)
-                  ? "Finalizar Orientação"
-                  : feedbackActionType === "confirm-finalize" // Confirmação Finalização (Professor)
-                  ? "Confirmar Finalização Solicitada"
-                  : orientacao.solicitacao_cancelamento === "aluno" // Confirmação Cancelamento (Professor)
-                  ? "Confirmar Cancelamento Solicitado"
-                  : "Cancelar Orientação (Professor)" /* Cancelamento Direto (Professor) */
-              }
-            </DialogTitle>
-            <DialogDescription>
-              {feedbackActionType === "finalize" ||
-              feedbackActionType === "confirm-finalize"
-                ? 'A orientação será movida para o status "Finalizado". Você pode adicionar um feedback opcional para o aluno sobre o TCC.'
-                : 'A orientação será movida para o status "Encerrado". Você pode adicionar um feedback opcional sobre o motivo.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="feedback_text">Feedback (Opcional)</Label>
-            <Textarea
-              id="feedback_text"
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
-              placeholder={
-                feedbackActionType === "finalize" ||
-                feedbackActionType === "confirm-finalize"
-                  ? "Comentários finais sobre o TCC, pontos positivos, etc."
-                  : "Motivo do encerramento, próximos passos, etc."
-              }
-              rows={4}
-            />
-          </div>
+          {/* ... existing code ... */}
           <DialogFooter>
             <Button
               type="button"
@@ -787,7 +756,7 @@ const OrientacaoCard = ({
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               Confirmar{" "}
-              {feedbackActionType.includes("finalize")
+              {feedbackActionType?.includes("finalize")
                 ? "Finalização"
                 : "Encerramento"}
             </Button>
