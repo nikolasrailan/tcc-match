@@ -8,8 +8,8 @@ import {
   confirmarCancelamentoOrientacao,
   cancelarOrientacaoDiretoProfessor,
   finalizarOrientacao,
-  solicitarFinalizacaoOrientacao,
-  confirmarFinalizacaoOrientacao,
+  solicitarFinalizacaoOrientacao, // Importa solicitar finalização
+  confirmarFinalizacaoOrientacao, // Importa confirmar finalização
 } from "@/api/apiService";
 import {
   Card,
@@ -32,7 +32,7 @@ import {
   DialogFooter,
   DialogClose,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"; // Correct import from shadcn/ui components
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,6 +80,9 @@ const OrientacaoCard = ({
   const [feedbackActionType, setFeedbackActionType] = useState(null); // 'cancel', 'finalize', 'confirm-finalize'
   const [feedbackText, setFeedbackText] = useState("");
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+
+  // Gera IDs únicos para acessibilidade dos diálogos
+  const feedbackDialogTitleId = `feedback-dialog-title-${orientacao.id_orientacao}`;
 
   const [formData, setFormData] = useState({
     url_projeto: orientacao.url_projeto || "",
@@ -198,7 +201,12 @@ const OrientacaoCard = ({
           toast.success(
             result.message || "Solicitação de finalização enviada."
           );
-          onActionSuccess(); // Atualiza a página de orientações
+          // FIX: Verifica se onActionSuccess é uma função antes de chamar
+          if (typeof onActionSuccess === "function") {
+            onActionSuccess(); // Atualiza a página de orientações
+          } else {
+            console.warn("onActionSuccess is not a function in OrientacaoCard");
+          }
         } catch (error) {
           toast.error(`Erro ao solicitar finalização: ${error.message}`);
         } finally {
@@ -238,7 +246,12 @@ const OrientacaoCard = ({
           toast.success(
             result.message || "Solicitação de cancelamento enviada."
           );
-          onActionSuccess(); // Atualiza a página de orientações
+          // FIX: Verifica se onActionSuccess é uma função antes de chamar
+          if (typeof onActionSuccess === "function") {
+            onActionSuccess(); // Atualiza a página de orientações
+          } else {
+            console.warn("onActionSuccess is not a function in OrientacaoCard");
+          }
         } catch (error) {
           toast.error(`Erro ao solicitar cancelamento: ${error.message}`);
         } finally {
@@ -319,7 +332,12 @@ const OrientacaoCard = ({
 
       toast.success(successMessage);
       setFeedbackModalOpen(false); // Fecha o modal de feedback
-      onActionSuccess(); // Atualiza a página de orientações
+      // FIX: Verifica se onActionSuccess é uma função antes de chamar
+      if (typeof onActionSuccess === "function") {
+        onActionSuccess(); // Atualiza a página de orientações
+      } else {
+        console.warn("onActionSuccess is not a function in OrientacaoCard");
+      }
     } catch (error) {
       const actionText = feedbackActionType?.includes("finalize") // Add safe check
         ? "finalizar"
@@ -750,6 +768,7 @@ const OrientacaoCard = ({
         description={confirmationState.description}
         onConfirm={confirmationState.onConfirm}
         isSubmitting={isSubmittingAction} // Passa o estado de loading
+        // A prop "title" será usada pelo ConfirmationDialog para seu DialogTitle
       />
 
       {/* Modal para Criar/Editar Reunião */}
@@ -757,6 +776,7 @@ const OrientacaoCard = ({
         open={reuniaoModalState.open}
         onOpenChange={(isOpen) => !isOpen && handleCloseReuniaoModal()}
       >
+        {/* ReuniaoModal é responsável pelo seu próprio DialogTitle */}
         <ReuniaoModal
           orientacaoId={orientacao.id_orientacao} // Passa o ID da orientação atual
           initialData={reuniaoModalState.initialData}
@@ -770,6 +790,7 @@ const OrientacaoCard = ({
 
       {/* Modal para Visualizar/Gerenciar Tópicos */}
       <Dialog open={topicosModalOpen} onOpenChange={setTopicosModalOpen}>
+        {/* TopicosDialog é responsável pelo seu próprio DialogTitle */}
         <TopicosDialog
           orientacao={orientacao} // Passa a orientação atual
           userRole={userRole}
@@ -781,9 +802,10 @@ const OrientacaoCard = ({
 
       {/* Modal UNIFICADO para feedback de Finalização/Cancelamento */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
-        <DialogContent aria-labelledby="feedback-dialog-title-orientacao">
+        {/* FIX: Adiciona aria-labelledby e id ao DialogTitle */}
+        <DialogContent aria-labelledby={feedbackDialogTitleId}>
           <DialogHeader>
-            <DialogTitle id="feedback-dialog-title-orientacao">
+            <DialogTitle id={feedbackDialogTitleId}>
               {
                 feedbackActionType === "finalize" // Finalização Direta (Professor)
                   ? "Finalizar Orientação"
@@ -793,7 +815,6 @@ const OrientacaoCard = ({
                   ? "Confirmar Cancelamento Solicitado"
                   : "Cancelar Orientação (Professor)" /* Cancelamento Direto (Professor) */
               }
-              .
             </DialogTitle>
             <DialogDescription>
               {feedbackActionType === "finalize" ||
@@ -830,7 +851,7 @@ const OrientacaoCard = ({
               onClick={handleFeedbackSubmit}
               disabled={isSubmittingAction}
               className={
-                feedbackActionType?.includes("finalize") // ADDED: Optional chaining ?.
+                feedbackActionType?.includes("finalize") // Optional chaining
                   ? "bg-green-600 hover:bg-green-700"
                   : "bg-red-600 hover:bg-red-700"
               } // Estilo condicional
@@ -839,7 +860,7 @@ const OrientacaoCard = ({
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               Confirmar{" "}
-              {feedbackActionType?.includes("finalize") // ADDED: Optional chaining ?.
+              {feedbackActionType?.includes("finalize") // Optional chaining
                 ? "Finalização"
                 : "Encerramento"}
             </Button>

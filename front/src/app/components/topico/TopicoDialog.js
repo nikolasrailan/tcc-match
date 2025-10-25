@@ -49,10 +49,17 @@ const TopicosDialog = ({
   const [confirmState, setConfirmState] = useState({
     open: false,
     onConfirm: () => {},
+    isSubmitting: false, // Add loading state
   });
   const [commentingTopico, setCommentingTopico] = useState(null);
   const [comentario, setComentario] = useState("");
   const [viewingTopico, setViewingTopico] = useState(null);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false); // Add loading state for comment
+
+  // Generate unique IDs for dialog titles
+  const viewDialogTitleId = React.useId();
+  const commentDialogTitleId = React.useId();
+  const mainDialogTitleId = React.useId(); // ID for the main dialog
 
   const handleCreateOrUpdate = async (formData) => {
     try {
@@ -74,15 +81,24 @@ const TopicosDialog = ({
   const handleDelete = (id_topico) => {
     setConfirmState({
       open: true,
+      title: "Confirmar Exclusão", // Pass title
+      description: "Tem certeza que deseja excluir este tópico?", // Pass description
+      isSubmitting: false, // Reset loading state
       onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, isSubmitting: true })); // Set loading
         try {
           await deletarTopico(id_topico);
           toast.success("Tópico excluído com sucesso.");
           onTopicUpdate();
         } catch (error) {
           toast.error("Erro ao excluir tópico.");
+        } finally {
+          setConfirmState({
+            open: false,
+            onConfirm: () => {},
+            isSubmitting: false,
+          }); // Close and reset
         }
-        setConfirmState({ open: false, onConfirm: () => {} });
       },
     });
   };
@@ -103,6 +119,7 @@ const TopicosDialog = ({
   };
 
   const handleSaveComment = async () => {
+    setIsSubmittingComment(true); // Start loading
     try {
       await atualizarTopico(commentingTopico.id_topico, {
         comentario_professor: comentario,
@@ -112,6 +129,8 @@ const TopicosDialog = ({
       setCommentingTopico(null);
     } catch (error) {
       toast.error("Erro ao salvar comentário.");
+    } finally {
+      setIsSubmittingComment(false); // Stop loading
     }
   };
 
@@ -140,9 +159,15 @@ const TopicosDialog = ({
 
   return (
     <>
-      <DialogContent className="max-w-[90vw]">
+      {/* Main Dialog Content */}
+      <DialogContent
+        className="max-w-[90vw]"
+        aria-labelledby={mainDialogTitleId}
+      >
         <DialogHeader>
-          <DialogTitle>Tópicos da Orientação</DialogTitle>
+          <DialogTitle id={mainDialogTitleId}>
+            Tópicos da Orientação
+          </DialogTitle>
           <DialogDescription>
             Envie documentos e acompanhe o feedback do seu professor.
           </DialogDescription>
@@ -175,12 +200,6 @@ const TopicosDialog = ({
                       <TableRow key={topico.id_topico}>
                         <TableCell className="font-medium">
                           <p>{topico.titulo}</p>
-                          {/* {topico.comentario_professor && (
-                            <p className="text-xs mt-2 p-2 bg-muted rounded-md">
-                              <strong>Prof:</strong>{" "}
-                              {topico.comentario_professor}
-                            </p>
-                          )} */}
                         </TableCell>
                         <TableCell>
                           {new Date(topico.data_criacao).toLocaleDateString()}
@@ -193,6 +212,7 @@ const TopicosDialog = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleViewTopico(topico)}
+                                aria-label={`Ver tópico ${topico.titulo}`}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -202,6 +222,7 @@ const TopicosDialog = ({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setEditingTopico(topico)}
+                                    aria-label={`Editar tópico ${topico.titulo}`}
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
@@ -211,6 +232,7 @@ const TopicosDialog = ({
                                     onClick={() =>
                                       handleDelete(topico.id_topico)
                                     }
+                                    aria-label={`Excluir tópico ${topico.titulo}`}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -224,6 +246,7 @@ const TopicosDialog = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleViewTopico(topico)}
+                                aria-label={`Ver tópico ${topico.titulo}`}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -234,6 +257,7 @@ const TopicosDialog = ({
                                   onClick={() =>
                                     handleStatusChange(topico, "revisado")
                                   }
+                                  aria-label={`Marcar tópico ${topico.titulo} como revisado`}
                                 >
                                   <Check className="h-4 w-4 text-green-500" />
                                 </Button>
@@ -264,23 +288,38 @@ const TopicosDialog = ({
         )}
       </DialogContent>
 
+      {/* Confirmation Dialog for Deletion */}
       <ConfirmationDialog
         open={confirmState.open}
         onOpenChange={(isOpen) =>
-          !isOpen && setConfirmState({ open: false, onConfirm: () => {} })
+          !isOpen &&
+          setConfirmState({
+            open: false,
+            onConfirm: () => {},
+            isSubmitting: false,
+          })
         }
-        title="Confirmar Exclusão"
-        description="Tem certeza que deseja excluir este tópico?"
+        title={confirmState.title}
+        description={confirmState.description}
         onConfirm={confirmState.onConfirm}
+        isSubmitting={confirmState.isSubmitting} // Pass loading state
+        confirmText="Excluir"
+        confirmVariant="destructive"
       />
 
+      {/* Dialog for Viewing Topic Details */}
       <Dialog
         open={!!viewingTopico}
         onOpenChange={() => setViewingTopico(null)}
       >
-        <DialogContent className="max-w-4xl">
+        <DialogContent
+          className="max-w-4xl"
+          aria-labelledby={viewDialogTitleId}
+        >
           <DialogHeader>
-            <DialogTitle>{viewingTopico?.titulo}</DialogTitle>
+            <DialogTitle id={viewDialogTitleId}>
+              {viewingTopico?.titulo}
+            </DialogTitle>
             <DialogDescription>
               Enviado em{" "}
               {viewingTopico
@@ -323,13 +362,16 @@ const TopicosDialog = ({
         </DialogContent>
       </Dialog>
 
+      {/* Dialog for Adding/Editing Comment */}
       <Dialog
         open={!!commentingTopico}
         onOpenChange={() => setCommentingTopico(null)}
       >
-        <DialogContent>
+        <DialogContent aria-labelledby={commentDialogTitleId}>
           <DialogHeader>
-            <DialogTitle>Adicionar Comentário</DialogTitle>
+            <DialogTitle id={commentDialogTitleId}>
+              Adicionar Comentário
+            </DialogTitle>
             <DialogDescription>
               Deixe um feedback para o aluno sobre &quot;
               {commentingTopico?.titulo}&quot;.
@@ -339,12 +381,22 @@ const TopicosDialog = ({
             value={comentario}
             onChange={(e) => setComentario(e.target.value)}
             rows={4}
+            aria-label="Comentário do professor"
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCommentingTopico(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setCommentingTopico(null)}
+              disabled={isSubmittingComment}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleSaveComment}>Salvar Comentário</Button>
+            <Button onClick={handleSaveComment} disabled={isSubmittingComment}>
+              {isSubmittingComment && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Salvar Comentário
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
