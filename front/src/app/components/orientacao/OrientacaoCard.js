@@ -781,7 +781,6 @@ const OrientacaoCard = ({
 
       {/* Modal UNIFICADO para feedback de Finalização/Cancelamento */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
-        {/* Adiciona aria-labelledby e id ao DialogTitle */}
         <DialogContent aria-labelledby="feedback-dialog-title-orientacao">
           <DialogHeader>
             <DialogTitle id="feedback-dialog-title-orientacao">
@@ -794,6 +793,7 @@ const OrientacaoCard = ({
                   ? "Confirmar Cancelamento Solicitado"
                   : "Cancelar Orientação (Professor)" /* Cancelamento Direto (Professor) */
               }
+              .
             </DialogTitle>
             <DialogDescription>
               {feedbackActionType === "finalize" ||

@@ -41,10 +41,11 @@ export default function OrientacaoPage() {
 
       if (Array.isArray(todasOrientacoes)) {
         todasOrientacoes.forEach((o) => {
-          if (["encerrado", "cancelado"].includes(o.status)) {
+          // Changed condition to consider 'finalizado' as inactive as well
+          if (["encerrado", "cancelado", "finalizado"].includes(o.status)) {
             inativas.push(o);
           } else {
-            // Inclui 'em desenvolvimento', 'pausado', 'finalizado' e solicitações pendentes
+            // Includes 'em desenvolvimento', 'pausado', and pending requests ('solicitacao_finalizacao', 'solicitacao_cancelamento')
             ativas.push(o);
           }
         });
@@ -54,8 +55,10 @@ export default function OrientacaoPage() {
       setOrientacoesInativas(inativas);
 
       // Ajusta o índice selecionado se ele ficar inválido após a atualização
-      if (selectedAtivaIndex >= ativas.length) {
-        setSelectedAtivaIndex(0);
+      if (selectedAtivaIndex >= ativas.length && ativas.length > 0) {
+        setSelectedAtivaIndex(0); // Reset index only if there are active items
+      } else if (ativas.length === 0) {
+        setSelectedAtivaIndex(0); // Default to 0 if no active items
       }
     } catch (e) {
       setError(
@@ -88,9 +91,10 @@ export default function OrientacaoPage() {
     }
   };
 
-  const handleCancelSuccess = async () => {
+  // Renamed function to handle success of ANY action (cancel, finalize, etc.)
+  const handleActionSuccess = async () => {
     setLoading(true);
-    await fetchData(); // Recarrega os dados após cancelamento/encerramento
+    await fetchData(); // Recarrega os dados após a ação bem-sucedida
   };
 
   if (loading) {
@@ -147,11 +151,10 @@ export default function OrientacaoPage() {
     );
   }
 
-  // Garante que selectedAtivaIndex é válido para orientações ativas
-  const currentActiveIndex = Math.max(
-    0,
-    Math.min(selectedAtivaIndex, orientacoesAtivas.length - 1)
-  );
+  const currentActiveIndex =
+    orientacoesAtivas.length > 0
+      ? Math.max(0, Math.min(selectedAtivaIndex, orientacoesAtivas.length - 1))
+      : 0;
   const currentActiveOrientacao = orientacoesAtivas[currentActiveIndex];
 
   return (
@@ -171,13 +174,13 @@ export default function OrientacaoPage() {
                 selectedIndex={currentActiveIndex}
                 onSelect={setSelectedAtivaIndex}
               />
-              {currentActiveOrientacao && (
+              {currentActiveOrientacao && ( // Render only if currentActiveOrientacao exists
                 <OrientacaoCard
                   key={currentActiveOrientacao.id_orientacao}
                   orientacao={currentActiveOrientacao}
                   userRole={userRole}
                   onUpdate={handleUpdateDetails}
-                  onCancelSuccess={handleCancelSuccess}
+                  onActionSuccess={handleActionSuccess}
                 />
               )}
             </>
@@ -188,7 +191,7 @@ export default function OrientacaoPage() {
                 orientacao={currentActiveOrientacao}
                 userRole={userRole}
                 onUpdate={handleUpdateDetails}
-                onCancelSuccess={handleCancelSuccess}
+                onActionSuccess={handleActionSuccess}
               />
             )
           )}
@@ -213,7 +216,7 @@ export default function OrientacaoPage() {
                 orientacao={orientacao}
                 userRole={userRole}
                 onUpdate={handleUpdateDetails}
-                onCancelSuccess={handleCancelSuccess} // Passa a função aqui também, caso necessário
+                onActionSuccess={handleActionSuccess} // Pass renamed prop here too
               />
             ))}
           </div>
