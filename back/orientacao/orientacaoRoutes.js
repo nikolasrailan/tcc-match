@@ -24,6 +24,16 @@ router.patch(
   orientacaoController.confirmarCancelamento
 );
 
+router.patch(
+  "/:id/solicitar-finalizacao",
+  orientacaoController.solicitarFinalizacao
+);
+
+router.patch(
+  "/:id/confirmar-finalizacao",
+  orientacaoController.confirmarFinalizacao
+);
+
 // Rota PATCH para o Professor cancelar diretamente (sem solicitação do aluno)
 router.patch(
   "/:id/cancelar-direto",

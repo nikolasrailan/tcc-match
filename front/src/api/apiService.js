@@ -298,3 +298,14 @@ export const deletarAreaInteresse = (id) =>
 // ***  FUNÇÃO PARA FINALIZAR ORIENTAÇÃO ***
 export const finalizarOrientacao = (id) =>
   fetchApi(`/orientacoes/${id}/finalizar`, { method: "PATCH" });
+
+// ***FUNÇÃO PARA ALUNO SOLICITAR FINALIZAÇÃO ***
+export const solicitarFinalizacaoOrientacao = (id) =>
+  fetchApi(`/orientacoes/${id}/solicitar-finalizacao`, { method: "PATCH" });
+
+// *** FUNÇÃO PARA PROFESSOR CONFIRMAR FINALIZAÇÃO ***
+export const confirmarFinalizacaoOrientacao = (id, feedback = null) =>
+  fetchApi(`/orientacoes/${id}/confirmar-finalizacao`, {
+    method: "PATCH",
+    body: JSON.stringify({ feedback_cancelamento: feedback }),
+  });

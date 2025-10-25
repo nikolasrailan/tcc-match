@@ -6,7 +6,7 @@ const {
   Usuario,
   sequelize, // Adiciona sequelize aqui
 } = require("../models");
-const { Op, Sequelize } = require("sequelize"); // Importa Sequelize também se Op já estiver sendo usado
+const { Op, Sequelize } = require("sequelize");
 
 const orientacaoController = {
   async getOrientacao(req, res) {
@@ -415,6 +415,169 @@ const orientacaoController = {
       res
         .status(500)
         .json({ error: "Ocorreu um erro ao finalizar a orientação." });
+    }
+  },
+
+  async confirmarFinalizacao(req, res) {
+    const t = await sequelize.transaction();
+    try {
+      const { id } = req.params;
+      const { feedback_cancelamento } = req.body; // Reutiliza campo de feedback
+      const idUsuario = req.user.id;
+
+      const professor = await Professor.findOne({
+        where: { id_usuario: idUsuario },
+      });
+      if (!professor) {
+        await t.rollback();
+        return res
+          .status(403)
+          .json({ error: "Apenas professores podem confirmar finalização." });
+      }
+
+      const orientacao = await Orientacao.findOne({
+        where: { id_orientacao: id, id_professor: professor.id_professor },
+        transaction: t,
+      });
+      if (!orientacao) {
+        await t.rollback();
+        return res.status(404).json({
+          error: "Orientação não encontrada ou não pertence a este professor.",
+        });
+      }
+
+      if (orientacao.solicitacao_finalizacao !== "aluno") {
+        await t.rollback();
+        return res.status(400).json({
+          error:
+            "Não há solicitação de finalização pendente do aluno para esta orientação.",
+        });
+      }
+
+      // Atualiza status, data_fim e feedback
+      await orientacao.update(
+        {
+          status: "finalizado",
+          data_fim: new Date(),
+          feedback_cancelamento: feedback_cancelamento || null, // Salva o feedback
+          solicitacao_finalizacao: "nenhuma", // Limpa a solicitação
+        },
+        { transaction: t }
+      );
+
+      await t.commit();
+
+      res.status(200).json({ message: "Orientação finalizada com sucesso." });
+    } catch (error) {
+      await t.rollback();
+      console.error("Erro ao confirmar finalização:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao confirmar a finalização." });
+    }
+  },
+
+  async solicitarFinalizacao(req, res) {
+    try {
+      const { id } = req.params;
+      const idUsuario = req.user.id;
+
+      const aluno = await Aluno.findOne({ where: { id_usuario: idUsuario } });
+      if (!aluno) {
+        return res
+          .status(403)
+          .json({ error: "Apenas alunos podem solicitar finalização." });
+      }
+
+      const orientacao = await Orientacao.findOne({
+        where: { id_orientacao: id, id_aluno: aluno.id_aluno },
+      });
+      if (!orientacao) {
+        return res.status(404).json({
+          error: "Orientação não encontrada ou não pertence a este aluno.",
+        });
+      }
+
+      // Verifica se já não está finalizada/encerrada ou se já tem solicitação pendente
+      if (
+        orientacao.solicitacao_finalizacao !== "nenhuma" ||
+        orientacao.solicitacao_cancelamento !== "nenhuma" ||
+        !["em desenvolvimento", "pausado"].includes(orientacao.status)
+      ) {
+        return res.status(400).json({
+          error: "Não é possível solicitar finalização nesta orientação.",
+        });
+      }
+
+      await orientacao.update({ solicitacao_finalizacao: "aluno" });
+
+      res
+        .status(200)
+        .json({ message: "Solicitação de finalização enviada ao professor." });
+    } catch (error) {
+      console.error("Erro ao solicitar finalização:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao solicitar a finalização." });
+    }
+  },
+
+  async confirmarFinalizacao(req, res) {
+    const t = await sequelize.transaction();
+    try {
+      const { id } = req.params;
+      const { feedback_cancelamento } = req.body; // Reutiliza campo de feedback
+      const idUsuario = req.user.id;
+
+      const professor = await Professor.findOne({
+        where: { id_usuario: idUsuario },
+      });
+      if (!professor) {
+        await t.rollback();
+        return res
+          .status(403)
+          .json({ error: "Apenas professores podem confirmar finalização." });
+      }
+
+      const orientacao = await Orientacao.findOne({
+        where: { id_orientacao: id, id_professor: professor.id_professor },
+        transaction: t,
+      });
+      if (!orientacao) {
+        await t.rollback();
+        return res.status(404).json({
+          error: "Orientação não encontrada ou não pertence a este professor.",
+        });
+      }
+
+      if (orientacao.solicitacao_finalizacao !== "aluno") {
+        await t.rollback();
+        return res.status(400).json({
+          error:
+            "Não há solicitação de finalização pendente do aluno para esta orientação.",
+        });
+      }
+
+      // Atualiza status, data_fim e feedback
+      await orientacao.update(
+        {
+          status: "finalizado",
+          data_fim: new Date(),
+          feedback_cancelamento: feedback_cancelamento || null, // Salva o feedback
+          solicitacao_finalizacao: "nenhuma", // Limpa a solicitação
+        },
+        { transaction: t }
+      );
+
+      await t.commit();
+
+      res.status(200).json({ message: "Orientação finalizada com sucesso." });
+    } catch (error) {
+      await t.rollback();
+      console.error("Erro ao confirmar finalização:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao confirmar a finalização." });
     }
   },
 };

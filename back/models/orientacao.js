@@ -57,6 +57,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: "nenhuma",
       },
+      solicitacao_finalizacao: {
+        type: DataTypes.ENUM("nenhuma", "aluno"),
+        allowNull: false,
+        defaultValue: "nenhuma",
+      },
       url_projeto: {
         type: DataTypes.STRING,
         allowNull: true,
