@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { format, setHours, setMinutes, parseISO, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react"; // Import Loader2
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -33,6 +33,10 @@ const ReuniaoModal = ({
   const [selectedTime, setSelectedTime] = useState("");
   const [pauta, setPauta] = useState("");
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add loading state
+
+  // FIX: Generate unique ID for dialog title
+  const titleId = React.useId();
 
   useEffect(() => {
     if (initialData) {
@@ -59,6 +63,8 @@ const ReuniaoModal = ({
       toast.error("Por favor, selecione data e hora.");
       return;
     }
+
+    setIsSubmitting(true); // Start loading
 
     const [hours, minutes] = selectedTime.split(":").map(Number);
     let combinedDate = setHours(selectedDate, hours);
@@ -87,13 +93,16 @@ const ReuniaoModal = ({
       toast.error("Erro ao salvar reunião", {
         description: error.message,
       });
+    } finally {
+      setIsSubmitting(false); // Stop loading
     }
   };
 
   return (
-    <DialogContent>
+    <DialogContent aria-labelledby={titleId}>
       <DialogHeader>
-        <DialogTitle>
+        {/* FIX: Add id to DialogTitle */}
+        <DialogTitle id={titleId}>
           {initialData ? "Editar Reunião" : "Agendar Nova Reunião"}
         </DialogTitle>
       </DialogHeader>
@@ -109,6 +118,7 @@ const ReuniaoModal = ({
                     "w-full justify-start text-left font-normal",
                     !selectedDate && "text-muted-foreground"
                   )}
+                  disabled={isSubmitting} // Disable while loading
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {selectedDate ? (
@@ -135,6 +145,7 @@ const ReuniaoModal = ({
               type="time"
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
+              disabled={isSubmitting} // Disable while loading
             />
           </div>
         </div>
@@ -145,14 +156,21 @@ const ReuniaoModal = ({
             value={pauta}
             onChange={(e) => setPauta(e.target.value)}
             placeholder="Tópicos a serem discutidos..."
+            disabled={isSubmitting} // Disable while loading
           />
         </div>
       </div>
       <DialogFooter>
-        <Button type="button" variant="secondary" onClick={onClose}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onClose}
+          disabled={isSubmitting}
+        >
           Cancelar
         </Button>
-        <Button onClick={handleSubmit}>
+        <Button onClick={handleSubmit} disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {initialData ? "Salvar Alterações" : "Agendar"}
         </Button>
       </DialogFooter>
