@@ -36,6 +36,12 @@ async function fetchApi(endpoint, options = {}) {
               .map((err) => err.msg || err.message)
               .join("\n");
           }
+          // Adiciona os alertas da API de gerar bancas ao erro, se existirem
+          if (body.alertas) {
+            errorData.alertas = body.alertas;
+            // Opcionalmente, adicionar ao message principal
+            // errorData.message += `\nAlertas:\n${body.alertas.join('\n')}`;
+          }
         } catch (e) {
           // Se não conseguir parsear o JSON do erro, usa o statusText
           errorData.message = `Erro ${response.status}: ${
@@ -56,7 +62,12 @@ async function fetchApi(endpoint, options = {}) {
           }`;
         }
       }
-      throw new Error(errorData.message);
+      // Cria um erro que pode conter a propriedade 'alertas'
+      const error = new Error(errorData.message);
+      if (errorData.alertas) {
+        error.alertas = errorData.alertas;
+      }
+      throw error;
     }
 
     // Handle No Content response
@@ -295,7 +306,7 @@ export const deletarAreaInteresse = (id) =>
     method: "DELETE",
   });
 
-// ***  FUNÇÃO PARA FINALIZAR ORIENTAÇÃO ***
+// *** FUNÇÃO PARA FINALIZAR ORIENTAÇÃO ***
 export const finalizarOrientacao = (id) =>
   fetchApi(`/orientacoes/${id}/finalizar`, { method: "PATCH" });
 
@@ -308,4 +319,13 @@ export const confirmarFinalizacaoOrientacao = (id, feedback = null) =>
   fetchApi(`/orientacoes/${id}/confirmar-finalizacao`, {
     method: "PATCH",
     body: JSON.stringify({ feedback_cancelamento: feedback }),
+  });
+
+// --- Funções de Banca ---
+export const gerarBancas = () => fetchApi("/bancas/gerar", { method: "POST" });
+export const listarBancas = () => fetchApi("/bancas");
+export const atualizarDetalhesBanca = (id_banca, data) =>
+  fetchApi(`/bancas/${id_banca}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
   });

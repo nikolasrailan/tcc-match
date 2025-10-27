@@ -23,20 +23,34 @@ export default function Navbar() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          console.error("Failed to parse user from localStorage", e);
+    // Função para atualizar o usuário do localStorage
+    const updateUserFromStorage = () => {
+      if (typeof window !== "undefined") {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (e) {
+            console.error("Failed to parse user from localStorage", e);
+            setUser(null);
+            logout(); // Faz logout se o usuário for inválido
+          }
+        } else {
           setUser(null);
         }
-      } else {
-        setUser(null);
       }
-    }
-  }, [pathname]);
+    };
+
+    updateUserFromStorage(); // Executa na montagem inicial e mudança de rota
+
+    // Adiciona um listener para o evento storage para atualizar se o localStorage mudar em outra aba
+    window.addEventListener("storage", updateUserFromStorage);
+
+    // Cleanup listener
+    return () => {
+      window.removeEventListener("storage", updateUserFromStorage);
+    };
+  }, [pathname, logout]); // Adiciona logout como dependência
 
   const getInitials = (name) => {
     if (!name) return "";
@@ -52,7 +66,9 @@ export default function Navbar() {
       <Link href="/" className="text-xl font-bold">
         TCC Match
       </Link>
-      <nav className="flex items-center gap-2">
+      <nav className="flex items-center gap-1 flex-wrap justify-center">
+        {" "}
+        {/* Adicionado flex-wrap e justify-center */}
         <Link href="/" className={cn(navigationMenuTriggerStyle())}>
           Home
         </Link>
@@ -89,6 +105,13 @@ export default function Navbar() {
               className={cn(navigationMenuTriggerStyle())}
             >
               Áreas
+            </Link>
+            {/* Link para a nova página de Bancas */}
+            <Link
+              href="/admin/bancas"
+              className={cn(navigationMenuTriggerStyle())}
+            >
+              Bancas
             </Link>
           </>
         )}
@@ -127,9 +150,11 @@ export default function Navbar() {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <Button asChild>
-          <Link href="/login">Login</Link>
-        </Button>
+        pathname !== "/login" && ( // Não mostra o botão de Login na própria página de login
+          <Button asChild size="sm">
+            <Link href="/login">Login</Link>
+          </Button>
+        )
       )}
     </header>
   );

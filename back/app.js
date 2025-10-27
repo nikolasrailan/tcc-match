@@ -17,6 +17,7 @@ const areaInteresseRoutes = require("./areaInteresse/areaInteresseRoutes");
 const orientacaoRoutes = require("./orientacao/orientacaoRoutes");
 const reuniaoRoutes = require("./reuniao/reuniaoRoutes");
 const topicoRoutes = require("./topicos/topicoRoutes");
+const bancaRoutes = require("./banca/bancaRoutes");
 
 app.use("/usuarios", usuariosRoutes);
 app.use("/login", loginRoutes);
@@ -29,6 +30,7 @@ app.use("/areas-interesse", areaInteresseRoutes);
 app.use("/orientacoes", orientacaoRoutes);
 app.use("/reunioes", reuniaoRoutes);
 app.use("/topicos", topicoRoutes);
+app.use("/bancas", bancaRoutes);
 
 const port = 8000;
 app.listen(port, () => {
