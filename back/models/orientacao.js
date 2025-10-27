@@ -23,6 +23,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "id_orientacao",
         as: "topicos",
       });
+      this.hasOne(models.Banca, {
+        foreignKey: "id_orientacao",
+        as: "banca",
+      });
     }
   }
   Orientacao.init(
