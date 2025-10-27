@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, // Importar DialogDescription
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,9 @@ const ReuniaoModal = ({
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // Add loading state
 
-  // FIX: Generate unique ID for dialog title
+  // FIX: Generate unique IDs for dialog title and description
   const titleId = React.useId();
+  const descriptionId = React.useId(); // ID para a descrição
 
   useEffect(() => {
     if (initialData) {
@@ -89,9 +91,8 @@ const ReuniaoModal = ({
       onSave();
     } catch (error) {
       console.error("Failed to save meeting:", error);
-      // Substitui o alert pelo toast.error
       toast.error("Erro ao salvar reunião", {
-        description: error.message,
+        description: error.message || "Tente novamente.", // Melhor descrição do erro
       });
     } finally {
       setIsSubmitting(false); // Stop loading
@@ -99,12 +100,19 @@ const ReuniaoModal = ({
   };
 
   return (
-    <DialogContent aria-labelledby={titleId}>
+    // FIX: Add aria-labelledby and aria-describedby
+    <DialogContent aria-labelledby={titleId} aria-describedby={descriptionId}>
       <DialogHeader>
         {/* FIX: Add id to DialogTitle */}
         <DialogTitle id={titleId}>
           {initialData ? "Editar Reunião" : "Agendar Nova Reunião"}
         </DialogTitle>
+        {/* FIX: Add DialogDescription with id */}
+        <DialogDescription id={descriptionId}>
+          {initialData
+            ? "Atualize os detalhes da reunião."
+            : "Preencha os dados para agendar a reunião."}
+        </DialogDescription>
       </DialogHeader>
       <div className="space-y-4 py-4">
         <div className="grid grid-cols-2 gap-4">

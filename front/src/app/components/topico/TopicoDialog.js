@@ -4,7 +4,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
+  DialogTitle, // Certifique-se que DialogTitle está importado
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
@@ -32,6 +32,7 @@ import {
   MessageSquare,
   Eye,
   Check,
+  Loader2, // Importar Loader2
 } from "lucide-react";
 import TopicoForm from "./TopicoForm";
 import ConfirmationDialog from "../reuniao/ConfirmacaoDialog";
@@ -40,7 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 const TopicosDialog = ({
   orientacao,
   userRole,
-  onOpenChange,
+  onOpenChange, // Assume que a prop `open` está sendo controlada pelo componente pai
   onTopicUpdate,
   topicosList,
 }) => {
@@ -48,13 +49,15 @@ const TopicosDialog = ({
   const [editingTopico, setEditingTopico] = useState(null);
   const [confirmState, setConfirmState] = useState({
     open: false,
+    title: "",
+    description: "",
     onConfirm: () => {},
-    isSubmitting: false, // Add loading state
+    isSubmitting: false,
   });
   const [commentingTopico, setCommentingTopico] = useState(null);
   const [comentario, setComentario] = useState("");
   const [viewingTopico, setViewingTopico] = useState(null);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false); // Add loading state for comment
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   // Generate unique IDs for dialog titles
   const viewDialogTitleId = React.useId();
@@ -62,6 +65,7 @@ const TopicosDialog = ({
   const mainDialogTitleId = React.useId(); // ID for the main dialog
 
   const handleCreateOrUpdate = async (formData) => {
+    // ... (mesma lógica de antes)
     try {
       if (editingTopico) {
         await atualizarTopico(editingTopico.id_topico, formData);
@@ -81,11 +85,11 @@ const TopicosDialog = ({
   const handleDelete = (id_topico) => {
     setConfirmState({
       open: true,
-      title: "Confirmar Exclusão", // Pass title
-      description: "Tem certeza que deseja excluir este tópico?", // Pass description
-      isSubmitting: false, // Reset loading state
+      title: "Confirmar Exclusão",
+      description: "Tem certeza que deseja excluir este tópico?",
+      isSubmitting: false,
       onConfirm: async () => {
-        setConfirmState((prev) => ({ ...prev, isSubmitting: true })); // Set loading
+        setConfirmState((prev) => ({ ...prev, isSubmitting: true }));
         try {
           await deletarTopico(id_topico);
           toast.success("Tópico excluído com sucesso.");
@@ -95,9 +99,11 @@ const TopicosDialog = ({
         } finally {
           setConfirmState({
             open: false,
+            title: "",
+            description: "",
             onConfirm: () => {},
             isSubmitting: false,
-          }); // Close and reset
+          });
         }
       },
     });
@@ -160,11 +166,13 @@ const TopicosDialog = ({
   return (
     <>
       {/* Main Dialog Content */}
+      {/* FIX: Add aria-labelledby to the main DialogContent */}
       <DialogContent
-        className="max-w-[90vw]"
+        className="sm:max-w-[80vw] md:max-w-[70vw] lg:max-w-[60vw]" // Ajuste a largura conforme necessário
         aria-labelledby={mainDialogTitleId}
       >
         <DialogHeader>
+          {/* FIX: Add id to the main DialogTitle */}
           <DialogTitle id={mainDialogTitleId}>
             Tópicos da Orientação
           </DialogTitle>
@@ -199,6 +207,7 @@ const TopicosDialog = ({
                     topicosList.map((topico) => (
                       <TableRow key={topico.id_topico}>
                         <TableCell className="font-medium">
+                          {/* Wrap title in a paragraph or span if needed */}
                           <p>{topico.titulo}</p>
                         </TableCell>
                         <TableCell>
@@ -278,7 +287,9 @@ const TopicosDialog = ({
               </Table>
             </div>
             {userRole === "aluno" && (
-              <DialogFooter>
+              <DialogFooter className="mt-4">
+                {" "}
+                {/* Adicionado um espaçamento */}
                 <Button onClick={() => setFormOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Tópico
                 </Button>
@@ -295,6 +306,8 @@ const TopicosDialog = ({
           !isOpen &&
           setConfirmState({
             open: false,
+            title: "",
+            description: "",
             onConfirm: () => {},
             isSubmitting: false,
           })
@@ -313,7 +326,7 @@ const TopicosDialog = ({
         onOpenChange={() => setViewingTopico(null)}
       >
         <DialogContent
-          className="max-w-4xl"
+          className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl" // Ajuste a largura conforme necessário
           aria-labelledby={viewDialogTitleId}
         >
           <DialogHeader>
@@ -327,8 +340,12 @@ const TopicosDialog = ({
                 : ""}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 max-h-[60vh] overflow-y-auto">
-            <p className="text-sm text-muted-foreground">
+          <div className="py-4 max-h-[60vh] overflow-y-auto space-y-4">
+            {" "}
+            {/* Adicionado space-y-4 */}
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {" "}
+              {/* Adicionado whitespace-pre-wrap */}
               {viewingTopico?.descricao}
             </p>
             {viewingTopico?.comentario_professor && (
@@ -336,7 +353,9 @@ const TopicosDialog = ({
                 <p className="text-sm font-semibold">
                   Comentário do Professor:
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
+                  {" "}
+                  {/* Adicionado whitespace-pre-wrap */}
                   {viewingTopico?.comentario_professor}
                 </p>
               </div>
@@ -382,6 +401,7 @@ const TopicosDialog = ({
             onChange={(e) => setComentario(e.target.value)}
             rows={4}
             aria-label="Comentário do professor"
+            disabled={isSubmittingComment} // Desabilitar durante a submissão
           />
           <DialogFooter>
             <Button

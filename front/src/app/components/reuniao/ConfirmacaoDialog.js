@@ -5,35 +5,39 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   DialogClose,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react"; // Importar Loader
+import { Loader2 } from "lucide-react";
 
-// Adiciona props para loading e customização do botão
 const ConfirmationDialog = ({
   open,
   onOpenChange,
   title,
   description,
   onConfirm,
-  confirmText = "Confirmar", // Texto padrão
-  confirmVariant, // ex: 'destructive'
-  isSubmitting = false, // Estado de loading
+  confirmText = "Confirmar",
+  confirmVariant,
+  isSubmitting = false,
 }) => {
-  // Gera um ID único para acessibilidade
   const titleId = React.useId();
+  const descriptionId = React.useId();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* FIX: Associa o DialogContent ao DialogTitle */}
-      <DialogContent aria-labelledby={titleId}>
+      <DialogContent
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
+      >
         <DialogHeader>
-          {/* FIX: Adiciona o ID ao DialogTitle */}
           <DialogTitle id={titleId}>{title}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
+          {description && (
+            <DialogDescription id={descriptionId}>
+              {description}
+            </DialogDescription>
+          )}
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
@@ -43,8 +47,8 @@ const ConfirmationDialog = ({
           </DialogClose>
           <Button
             onClick={onConfirm}
-            variant={confirmVariant} // Aplica a variante (ex: 'destructive')
-            disabled={isSubmitting} // Desabilita no loading
+            variant={confirmVariant}
+            disabled={isSubmitting}
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {confirmText}
