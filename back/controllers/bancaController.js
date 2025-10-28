@@ -73,7 +73,7 @@ const bancaController = {
       });
 
       const bancasCriadas = [];
-      const erros = [];
+      const alertas = []; // Mudado de 'erros' para 'alertas'
 
       // 3. Iterar sobre cada orientação finalizada
       for (const orientacao of orientacoesFinalizadas) {
@@ -117,35 +117,59 @@ const bancaController = {
 
           // Adiciona alerta se não encontrou 3 professores
           if (avaliadoresSelecionados.length < 3) {
-            erros.push(
+            alertas.push(
               `Orientação ID ${orientacao.id_orientacao}: Encontrados apenas ${avaliadoresSelecionados.length} avaliadores compatíveis.`
             );
           }
         } catch (error) {
           // Verifica se o erro é de violação de chave única (banca já existe)
           if (error.name === "SequelizeUniqueConstraintError") {
-            erros.push(
-              `Orientação ID ${orientacao.id_orientacao}: Banca já existe.`
+            // Não é um erro crítico, apenas informa que já existe
+            console.warn(
+              `Banca para Orientação ID ${orientacao.id_orientacao} já existe.`
             );
           } else {
-            erros.push(
+            // Outros erros durante a criação da banca
+            alertas.push(
               `Erro ao criar banca para Orientação ID ${orientacao.id_orientacao}: ${error.message}`
             );
+            console.error(
+              `Erro ao criar banca para Orientação ID ${orientacao.id_orientacao}:`,
+              error
+            );
           }
-          // Continua para a próxima orientação mesmo se uma falhar
+          // Continua para a próxima orientação mesmo se uma falhar ou já existir
         }
       }
 
       await t.commit(); // Confirma a transação
 
-      res.status(201).json({
-        message: `Processo finalizado. ${bancasCriadas.length} bancas criadas/atualizadas.`,
-        bancasCriadasIds: bancasCriadas,
-        alertas: erros, // Retorna os erros/alertas ocorridos
-      });
+      // Se houveram erros não críticos (alertas), retorna 201 com mensagem e alertas
+      // Mesmo que bancasCriadas.length seja 0, mas houve alertas (ex: todas já existiam), ainda é sucesso parcial
+      if (alertas.length > 0) {
+        res.status(201).json({
+          message: `Processo finalizado. ${bancasCriadas.length} novas bancas criadas.`,
+          bancasCriadasIds: bancasCriadas,
+          alertas: alertas,
+        });
+      } else {
+        // Se não houveram alertas e nenhuma banca foi criada (improvável se chegou aqui, mas por segurança)
+        if (bancasCriadas.length === 0 && orientacoesFinalizadas.length > 0) {
+          res.status(200).json({
+            message:
+              "Nenhuma nova banca precisou ser criada (possivelmente já existiam).",
+          });
+        } else {
+          // Sucesso completo
+          res.status(201).json({
+            message: `Processo finalizado. ${bancasCriadas.length} bancas criadas com sucesso.`,
+            bancasCriadasIds: bancasCriadas,
+          });
+        }
+      }
     } catch (error) {
       await t.rollback(); // Desfaz a transação em caso de erro geral
-      console.error("Erro ao gerar bancas:", error);
+      console.error("Erro GERAL ao gerar bancas:", error);
       res
         .status(500)
         .json({ error: "Ocorreu um erro interno ao gerar as bancas." });
@@ -210,25 +234,127 @@ const bancaController = {
 
   // Função para atualizar data e local da defesa (pelo Admin)
   async atualizarDetalhesBanca(req, res) {
+    const t = await sequelize.transaction(); // Inicia transação
     try {
       const { id_banca } = req.params;
       const { data_defesa, local_defesa } = req.body;
 
-      const banca = await Banca.findByPk(id_banca);
+      const banca = await Banca.findByPk(id_banca, { transaction: t });
       if (!banca) {
+        await t.rollback();
         return res.status(404).json({ error: "Banca não encontrada." });
       }
 
       const dadosAtualizar = {};
-      if (data_defesa !== undefined)
-        dadosAtualizar.data_defesa = data_defesa || null; // Permite limpar a data
-      if (local_defesa !== undefined)
-        dadosAtualizar.local_defesa = local_defesa || null; // Permite limpar o local
 
-      await banca.update(dadosAtualizar);
+      // Atualiza data_defesa se fornecida
+      if (data_defesa !== undefined) {
+        const novaDataDefesa = new Date(data_defesa);
+        if (isNaN(novaDataDefesa.getTime())) {
+          await t.rollback();
+          return res
+            .status(400)
+            .json({ error: "Formato de data/hora inválido." });
+        }
 
-      res.status(200).json(banca);
+        // --- Verificação de Conflito ---
+        const dataInicioNova = novaDataDefesa;
+        const dataFimNova = new Date(dataInicioNova.getTime() + 30 * 60 * 1000); // Fim da nova = início + 30 min (buffer)
+        const dataInicioBufferAntes = new Date(
+          dataInicioNova.getTime() - 30 * 60 * 1000
+        );
+
+        const conflito = await Banca.findOne({
+          where: {
+            id_banca: { [Op.ne]: id_banca }, // Exclui a própria banca
+            data_defesa: {
+              [Op.ne]: null, // Considera apenas bancas com data definida
+              [Op.between]: [dataInicioBufferAntes, dataFimNova], // Verifica se alguma banca existente começa DENTRO do intervalo de buffer da nova
+              // Verifica se o INÍCIO de uma banca existente está entre (início_nova - 30min) e (início_nova + 30min)
+              // Isso cobre conflitos antes e depois, considerando o buffer de 30 minutos.
+            },
+          },
+          transaction: t,
+        });
+
+        if (conflito) {
+          await t.rollback();
+          const conflitoHora = conflito.data_defesa.toLocaleTimeString(
+            "pt-BR",
+            { hour: "2-digit", minute: "2-digit" }
+          );
+          return res.status(409).json({
+            error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
+          });
+        }
+        // --- Fim Verificação de Conflito ---
+
+        dadosAtualizar.data_defesa = novaDataDefesa;
+      }
+
+      if (local_defesa !== undefined) {
+        dadosAtualizar.local_defesa = local_defesa || null;
+      }
+
+      if (Object.keys(dadosAtualizar).length > 0) {
+        await banca.update(dadosAtualizar, { transaction: t });
+      } else {
+        await t.rollback();
+
+        return res.status(200).json({ message: "Nenhum dado para atualizar." });
+      }
+
+      await t.commit();
+
+      const bancaAtualizada = await Banca.findByPk(id_banca, {
+        include: [
+          {
+            model: Orientacao,
+            as: "orientacao",
+            attributes: ["id_orientacao"],
+            include: [
+              {
+                model: Aluno,
+                as: "aluno",
+                include: {
+                  model: Usuario,
+                  as: "dadosUsuario",
+                  attributes: ["nome"],
+                },
+              },
+              {
+                model: Professor,
+                as: "professor",
+                include: {
+                  model: Usuario,
+                  as: "usuario",
+                  attributes: ["nome"],
+                },
+              },
+              { model: IdeiaTcc, as: "ideiaTcc", attributes: ["titulo"] },
+            ],
+          },
+          {
+            model: Professor,
+            as: "avaliador1",
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+          },
+          {
+            model: Professor,
+            as: "avaliador2",
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+          },
+          {
+            model: Professor,
+            as: "avaliador3",
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+          },
+        ],
+      });
+
+      res.status(200).json(bancaAtualizada);
     } catch (error) {
+      await t.rollback();
       console.error("Erro ao atualizar detalhes da banca:", error);
       res
         .status(500)

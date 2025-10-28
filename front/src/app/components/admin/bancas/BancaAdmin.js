@@ -20,9 +20,15 @@ import {
   gerarBancas,
   listarBancas,
   atualizarDetalhesBanca,
-} from "@/api/apiService"; // Importa a nova função
+} from "@/api/apiService";
 import { toast } from "sonner";
-import { Loader2, CalendarIcon, MapPinIcon, PencilIcon } from "lucide-react";
+import {
+  Loader2,
+  CalendarIcon,
+  MapPinIcon,
+  PencilIcon,
+  ClockIcon,
+} from "lucide-react"; // Adicionado ClockIcon
 import {
   Popover,
   PopoverContent,
@@ -31,17 +37,19 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format, parseISO } from "date-fns";
+// Importar date-fns para manipulação de datas e horas
+import { format, parseISO, setHours, setMinutes, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils"; // Para o botão de calendário
+import { cn } from "@/lib/utils";
 
 const BancaAdmin = () => {
   const [bancas, setBancas] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingGenerate, setLoadingGenerate] = useState(false);
-  const [editingBanca, setEditingBanca] = useState(null); // Guarda a banca sendo editada
+  const [editingBanca, setEditingBanca] = useState(null);
   const [editData, setEditData] = useState({
-    data_defesa: null,
+    data_defesa: null, // Armazena o objeto Date selecionado
+    hora_defesa: "", // Armazena a hora como string "HH:mm"
     local_defesa: "",
   });
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -72,7 +80,12 @@ const BancaAdmin = () => {
       }
       fetchBancas(); // Atualiza a lista após gerar
     } catch (error) {
-      toast.error("Erro ao gerar bancas.", { description: error.message });
+      // Se houver alertas específicos de conflito no erro, exibe-os
+      if (error.alertas && Array.isArray(error.alertas)) {
+        error.alertas.forEach((alerta) => toast.warning(alerta));
+      } else {
+        toast.error("Erro ao gerar bancas.", { description: error.message });
+      }
     } finally {
       setLoadingGenerate(false);
     }
@@ -80,24 +93,34 @@ const BancaAdmin = () => {
 
   const handleOpenEdit = (banca) => {
     setEditingBanca(banca);
+    let initialDate = null;
+    let initialTime = "";
+    if (banca.data_defesa) {
+      const parsedDate = parseISO(banca.data_defesa);
+      if (isValid(parsedDate)) {
+        initialDate = parsedDate;
+        initialTime = format(parsedDate, "HH:mm");
+      }
+    }
     setEditData({
-      // Se a data_defesa existe e é válida, parseia, senão null
-      data_defesa:
-        banca.data_defesa && !isNaN(parseISO(banca.data_defesa).valueOf())
-          ? parseISO(banca.data_defesa)
-          : null,
+      data_defesa: initialDate,
+      hora_defesa: initialTime,
       local_defesa: banca.local_defesa || "",
     });
   };
 
   const handleCancelEdit = () => {
     setEditingBanca(null);
-    setEditData({ data_defesa: null, local_defesa: "" });
+    setEditData({ data_defesa: null, hora_defesa: "", local_defesa: "" });
   };
 
   const handleDateSelect = (date) => {
     setEditData((prev) => ({ ...prev, data_defesa: date }));
     setCalendarOpen(false); // Fecha o popover após selecionar
+  };
+
+  const handleTimeChange = (e) => {
+    setEditData((prev) => ({ ...prev, hora_defesa: e.target.value }));
   };
 
   const handleLocalChange = (e) => {
@@ -106,15 +129,41 @@ const BancaAdmin = () => {
 
   const handleSaveEdit = async () => {
     if (!editingBanca) return;
+
+    // Validar se data e hora foram selecionadas
+    if (!editData.data_defesa || !editData.hora_defesa) {
+      toast.error("Por favor, selecione a data e a hora da defesa.");
+      return;
+    }
+
     setLoadingGenerate(true); // Reutiliza o estado de loading para salvar
     try {
+      // Combina data e hora
+      const [hours, minutes] = editData.hora_defesa.split(":").map(Number);
+      let combinedDateTime = editData.data_defesa;
+      if (isValid(combinedDateTime)) {
+        combinedDateTime = setHours(combinedDateTime, hours);
+        combinedDateTime = setMinutes(combinedDateTime, minutes);
+      } else {
+        toast.error("Data inválida selecionada.");
+        setLoadingGenerate(false);
+        return;
+      }
+
       const dataToSave = {
-        // Formata a data para YYYY-MM-DD se ela existir, senão null
-        data_defesa: editData.data_defesa
-          ? format(editData.data_defesa, "yyyy-MM-dd")
+        // Formata data e hora para ISO string local (sem 'Z')
+        data_defesa: isValid(combinedDateTime)
+          ? format(combinedDateTime, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
         local_defesa: editData.local_defesa || null, // Salva null se vazio
       };
+
+      // Verifica se data_defesa não é null antes de enviar
+      if (!dataToSave.data_defesa) {
+        toast.error("Data ou hora inválida.");
+        setLoadingGenerate(false);
+        return;
+      }
 
       await atualizarDetalhesBanca(editingBanca.id_banca, dataToSave);
       toast.success("Detalhes da banca atualizados!");
@@ -171,8 +220,8 @@ const BancaAdmin = () => {
                   <TableHead>Avaliador 1</TableHead>
                   <TableHead>Avaliador 2</TableHead>
                   <TableHead>Avaliador 3</TableHead>
-                  <TableHead>Data Defesa</TableHead>
-                  <TableHead>Local Defesa</TableHead>
+                  <TableHead>Data e Hora</TableHead> {/* Coluna unificada */}
+                  <TableHead>Local</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -199,58 +248,82 @@ const BancaAdmin = () => {
                       <TableCell>
                         {renderNomeAvaliador(banca.avaliador3)}
                       </TableCell>
+                      {/* Célula de Edição ou Visualização de Data e Hora */}
                       <TableCell>
                         {editingBanca?.id_banca === banca.id_banca ? (
-                          <Popover
-                            open={calendarOpen}
-                            onOpenChange={setCalendarOpen}
-                          >
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-[180px] justify-start text-left font-normal",
-                                  !editData.data_defesa &&
-                                    "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {editData.data_defesa ? (
-                                  format(editData.data_defesa, "PPP", {
-                                    locale: ptBR,
-                                  })
-                                ) : (
-                                  <span>Escolha data</span>
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={editData.data_defesa}
-                                onSelect={handleDateSelect}
-                                initialFocus
-                                locale={ptBR}
+                          <div className="flex flex-col gap-2">
+                            {/* Input de Data */}
+                            <Popover
+                              open={calendarOpen}
+                              onOpenChange={setCalendarOpen}
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-[180px] justify-start text-left font-normal",
+                                    !editData.data_defesa &&
+                                      "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {editData.data_defesa ? (
+                                    format(editData.data_defesa, "PPP", {
+                                      locale: ptBR,
+                                    })
+                                  ) : (
+                                    <span>Escolha data</span>
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                  mode="single"
+                                  selected={editData.data_defesa}
+                                  onSelect={handleDateSelect}
+                                  initialFocus
+                                  locale={ptBR}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            {/* Input de Hora */}
+                            <div className="relative w-[180px]">
+                              <ClockIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                type="time"
+                                value={editData.hora_defesa}
+                                onChange={handleTimeChange}
+                                className="pl-8" // Padding para não sobrepor o ícone
                               />
-                            </PopoverContent>
-                          </Popover>
+                            </div>
+                          </div>
                         ) : banca.data_defesa ? (
-                          format(parseISO(banca.data_defesa), "dd/MM/yyyy")
+                          // Mostra data e hora formatadas
+                          format(
+                            parseISO(banca.data_defesa),
+                            "dd/MM/yyyy HH:mm"
+                          )
                         ) : (
                           "Não definida"
                         )}
                       </TableCell>
+                      {/* Célula de Edição ou Visualização de Local */}
                       <TableCell>
                         {editingBanca?.id_banca === banca.id_banca ? (
-                          <Input
-                            value={editData.local_defesa}
-                            onChange={handleLocalChange}
-                            placeholder="Local da defesa"
-                          />
+                          <div className="relative w-[180px]">
+                            <MapPinIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              value={editData.local_defesa}
+                              onChange={handleLocalChange}
+                              placeholder="Local da defesa"
+                              className="pl-8"
+                            />
+                          </div>
                         ) : (
                           banca.local_defesa || "Não definido"
                         )}
                       </TableCell>
+                      {/* Célula de Ações */}
                       <TableCell className="text-right">
                         {editingBanca?.id_banca === banca.id_banca ? (
                           <div className="flex gap-1 justify-end">
