@@ -4,23 +4,22 @@ const {
   Professor,
   AreaInteresse,
   IdeiaTcc,
-  Banca, // Importa o model Banca
-  Usuario, // Importa o model Usuario para buscar o nome
+  Banca,
+  Aluno,
+  Usuario,
   sequelize,
 } = require("../models");
 
-// Função auxiliar para embaralhar um array (Fisher-Yates shuffle)
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]]; // Troca elementos
+    [array[i], array[j]] = [array[j], array[i]];
   }
 }
 
 const bancaController = {
-  // Função para gerar as bancas
   async gerarBancas(req, res) {
-    const t = await sequelize.transaction(); // Inicia transação
+    const t = await sequelize.transaction();
     try {
       // 1. Buscar todas as orientações finalizadas que ainda não têm banca
       const orientacoesFinalizadas = await Orientacao.findAll({
@@ -55,11 +54,9 @@ const bancaController = {
 
       if (orientacoesFinalizadas.length === 0) {
         await t.rollback(); // Desfaz a transação se não há nada a fazer
-        return res
-          .status(200)
-          .json({
-            message: "Nenhuma orientação finalizada sem banca encontrada.",
-          });
+        return res.status(200).json({
+          message: "Nenhuma orientação finalizada sem banca encontrada.",
+        });
       }
 
       // 2. Buscar todos os professores com suas áreas de interesse
