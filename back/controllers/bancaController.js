@@ -286,11 +286,9 @@ const bancaController = {
               "pt-BR",
               { hour: "2-digit", minute: "2-digit" }
             );
-            return res
-              .status(409)
-              .json({
-                error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
-              });
+            return res.status(409).json({
+              error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
+            });
           }
           // --- Fim Verificação de Conflito ---
           dadosAtualizar.data_defesa = novaDataDefesa;
@@ -416,58 +414,216 @@ const bancaController = {
   },
 
   // Nova função para salvar o conceito da ata
-  async salvarConceitoAta(req, res) {
-    const t = await sequelize.transaction();
+  async gerarAtaPdf(req, res) {
     try {
       const { id_banca } = req.params;
-      const { conceito_aprovacao, conceito_final } = req.body;
 
-      // Validação básica dos conceitos
-      const conceitosAprovacaoValidos = [
-        "aprovado",
-        "aprovado_com_ressalvas",
-        "reprovado",
-      ];
-      const conceitosFinaisValidos = ["A", "B", "C", "D"];
+      // Busca a banca com todos os dados necessários
+      const banca = await Banca.findByPk(id_banca, {
+        include: [
+          {
+            model: Orientacao,
+            as: "orientacao",
+            include: [
+              {
+                model: Aluno,
+                as: "aluno",
+                include: [
+                  { model: Usuario, as: "dadosUsuario", attributes: ["nome"] },
+                  { model: Curso, as: "cursoInfo", attributes: ["nome"] }, // Inclui Curso
+                ],
+              },
+              {
+                model: Professor, // Orientador (Presidente)
+                as: "professor",
+                include: {
+                  model: Usuario,
+                  as: "usuario",
+                  attributes: ["nome"],
+                },
+              },
+              { model: IdeiaTcc, as: "ideiaTcc", attributes: ["titulo"] },
+            ],
+          },
+          {
+            model: Professor,
+            as: "avaliador1",
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+          },
+          {
+            model: Professor,
+            as: "avaliador2",
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+          },
+          {
+            model: Professor,
+            as: "avaliador3",
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+          },
+        ],
+      });
 
-      if (
-        !conceito_aprovacao ||
-        !conceitosAprovacaoValidos.includes(conceito_aprovacao)
-      ) {
-        await t.rollback();
-        return res
-          .status(400)
-          .json({ error: "Conceito de aprovação inválido." });
-      }
-      if (!conceito_final || !conceitosFinaisValidos.includes(conceito_final)) {
-        await t.rollback();
-        return res.status(400).json({ error: "Conceito final inválido." });
-      }
-
-      const banca = await Banca.findByPk(id_banca, { transaction: t });
       if (!banca) {
-        await t.rollback();
         return res.status(404).json({ error: "Banca não encontrada." });
       }
 
-      // Atualiza os conceitos na banca
-      await banca.update(
-        {
-          conceito_aprovacao,
-          conceito_final,
-        },
-        { transaction: t }
+      // Verifica se os dados essenciais para a ata existem
+      if (
+        !banca.data_defesa ||
+        !banca.local_defesa ||
+        !banca.conceito_aprovacao ||
+        !banca.conceito_final
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Dados incompletos para gerar a ata (Data, Local ou Conceitos).",
+          });
+      }
+
+      // Extrai dados para o PDF
+      const nomeAluno =
+        banca.orientacao?.aluno?.dadosUsuario?.nome || "[Nome Aluno]";
+      const tituloProjeto =
+        banca.orientacao?.ideiaTcc?.titulo || "[Título Projeto]";
+      const curso = banca.orientacao?.aluno?.cursoInfo?.nome || "[Nome Curso]";
+      const dataDefesa = banca.data_defesa
+        ? parseISO(banca.data_defesa.toISOString())
+        : null; // Parse ISO string
+      const dia =
+        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "dd") : "__";
+      const mes =
+        dataDefesa && isValid(dataDefesa)
+          ? format(dataDefesa, "MMMM", { locale: ptBR })
+          : "__";
+      const ano =
+        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "yyyy") : "__";
+      const hora =
+        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "HH:mm") : "__";
+      const local = banca.local_defesa || "[Local não definido]";
+
+      const orientador =
+        banca.orientacao?.professor?.usuario?.nome || "[Orientador]";
+      const avaliador1 = banca.avaliador1?.usuario?.nome || null;
+      const avaliador2 = banca.avaliador2?.usuario?.nome || null;
+      const avaliador3 = banca.avaliador3?.usuario?.nome || null;
+      const bancaExaminadoraNomes = [
+        orientador,
+        avaliador1,
+        avaliador2,
+        avaliador3,
+      ].filter(Boolean);
+
+      const conceitoAprovacao = banca.conceito_aprovacao;
+      const conceitoFinal = banca.conceito_final;
+
+      // Cria o documento PDF
+      const doc = new PDFDocument({
+        size: "A4",
+        margins: { top: 50, bottom: 50, left: 72, right: 72 },
+      });
+
+      // Configura headers para download
+      const filename = `Ata_Defesa_${nomeAluno.replace(/\s+/g, "_")}.pdf`;
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`
       );
 
-      await t.commit(); // Confirma a transação
+      doc.pipe(res);
 
-      res.status(200).json({ message: "Conceitos da ata salvos com sucesso." });
+      // --- Conteúdo do PDF ---
+      doc
+        .fontSize(14)
+        .font("Helvetica-Bold")
+        .text("ATA DE DEFESA DO TRABALHO DE CONCLUSÃO DE CURSO", {
+          align: "center",
+        });
+      doc.moveDown(2);
+
+      doc.fontSize(11).font("Helvetica");
+      const textoPrincipal = `No dia ${dia} do mês de ${mes} do ano de ${ano}, às ${hora}, no(a) ${local}, em sessão pública de defesa do Trabalho de Conclusão de Curso de ${curso} do discente ${nomeAluno}, tendo como título "${tituloProjeto}", compareceram como banca examinadora:`;
+      doc.text(textoPrincipal, { align: "justify", lineGap: 4 });
+      doc.moveDown(1);
+
+      // Membros da Banca
+      doc
+        .font("Helvetica-Bold")
+        .text("Banca Examinadora:", { continued: false }); // Garante nova linha
+      doc.moveDown(0.5);
+      doc.font("Helvetica");
+      bancaExaminadoraNomes.forEach((nome, index) => {
+        const role = index === 0 ? " (Presidente da Banca)" : "";
+        doc.list([`${nome}${role}`], { bulletRadius: 0, textIndent: 10 }); // Usa list para indentação
+      });
+      doc.moveDown(1);
+
+      // Resultado
+      doc.text(
+        "Após a apresentação e as observações dos referidos professores, ficou definido que o trabalho foi considerado:",
+        { align: "justify", lineGap: 4 }
+      );
+      doc.moveDown(0.5);
+
+      const opcoesAprovacaoMap = {
+        aprovado: "aprovado",
+        aprovado_com_ressalvas: "aprovado com ressalvas",
+        reprovado: "reprovado",
+      };
+      for (const [key, value] of Object.entries(opcoesAprovacaoMap)) {
+        const marcador = conceitoAprovacao === key ? "[X]" : "[ ]";
+        doc.text(`${marcador} ${value}`, { indent: 10 });
+      }
+      doc.moveDown(0.5);
+
+      doc.text("Com conceito final:", { lineGap: 4 });
+      doc.moveDown(0.5);
+      const conceitosFinais = ["A", "B", "C", "D"];
+      // Exibe lado a lado
+      let conceitoText = conceitosFinais
+        .map((cf) => {
+          const marcador = conceitoFinal === cf ? "[X]" : "[ ]";
+          return `${marcador} ${cf}`;
+        })
+        .join("      "); // Adiciona espaço entre as opções
+      doc.text(conceitoText, { indent: 10 });
+
+      doc.moveDown(1.5);
+
+      // Texto Final
+      doc.text(
+        "Nada mais havendo, eu, presidente da banca, lavrei a presente ata que segue assinada por mim e demais membros.",
+        { align: "justify", lineGap: 4 }
+      );
+      doc.moveDown(3);
+
+      // Assinaturas (simuladas)
+      const signatureY = doc.y; // Pega a posição atual
+      const signatureWidth = 200;
+      const pageWidth =
+        doc.page.width - doc.page.margins.left - doc.page.margins.right;
+      const startX = doc.page.margins.left; // Começa na margem esquerda
+
+      doc.text("___________________________", startX, signatureY, {
+        width: signatureWidth,
+        align: "center",
+      });
+      doc.text(orientador, startX, signatureY + 15, {
+        width: signatureWidth,
+        align: "center",
+      });
+      doc.text("(Presidente da Banca)", startX, signatureY + 30, {
+        width: signatureWidth,
+        align: "center",
+      });
+
+      // --- Finaliza o PDF ---
+      doc.end();
     } catch (error) {
-      await t.rollback();
-      console.error("Erro ao salvar conceitos da ata:", error);
-      res
-        .status(500)
-        .json({ error: "Ocorreu um erro ao salvar os conceitos da ata." });
+      console.error("Erro ao gerar PDF da ata:", error);
+      res.status(500).json({ error: "Erro ao gerar o documento PDF da ata." });
     }
   },
 };
