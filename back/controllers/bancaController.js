@@ -6,10 +6,12 @@ const {
   IdeiaTcc,
   Banca,
   Aluno,
+  Curso,
   Usuario,
   sequelize,
 } = require("../models");
-const PDFDocument = require("pdfkit"); // Certifique-se de que pdfkit está instalado
+const PDFDocument = require("pdfkit");
+const { ptBR } = require("date-fns/locale");
 
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -412,8 +414,43 @@ const bancaController = {
         .json({ error: "Ocorreu um erro ao atualizar os detalhes da banca." });
     }
   },
+  // ADICIONANDO A FUNÇÃO QUE FALTAVA
+  async salvarConceitoAta(req, res) {
+    const t = await sequelize.transaction();
+    try {
+      const { id_banca } = req.params;
+      const { conceito_aprovacao, conceito_final } = req.body;
 
-  // Nova função para salvar o conceito da ata
+      if (!conceito_aprovacao || !conceito_final) {
+        await t.rollback();
+        return res.status(400).json({ error: "Conceitos são obrigatórios." });
+      }
+
+      const banca = await Banca.findByPk(id_banca, { transaction: t });
+      if (!banca) {
+        await t.rollback();
+        return res.status(404).json({ error: "Banca não encontrada." });
+      }
+
+      await banca.update(
+        {
+          conceito_aprovacao,
+          conceito_final,
+        },
+        { transaction: t }
+      );
+
+      await t.commit();
+      res.status(200).json(banca); // Retorna a banca atualizada
+    } catch (error) {
+      await t.rollback();
+      console.error("Erro ao salvar conceito da ata:", error);
+      res.status(500).json({ error: "Erro ao salvar conceito da ata." });
+    }
+  },
+  // FIM DA ADIÇÃO
+
+  // ... (função gerarAtaPdf existente) ...
   async gerarAtaPdf(req, res) {
     try {
       const { id_banca } = req.params;
