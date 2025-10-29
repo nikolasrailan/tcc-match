@@ -61,6 +61,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      // Novos campos para a ata
+      conceito_aprovacao: {
+        type: DataTypes.ENUM("aprovado", "aprovado_com_ressalvas", "reprovado"),
+        allowNull: true,
+      },
+      conceito_final: {
+        type: DataTypes.ENUM("A", "B", "C", "D"),
+        allowNull: true,
+      },
     },
     {
       sequelize,

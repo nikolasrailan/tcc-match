@@ -11,4 +11,6 @@ router.get("/", bancaController.listarBancas);
 
 router.patch("/:id_banca", bancaController.atualizarDetalhesBanca);
 
+router.patch("/:id_banca/ata", bancaController.salvarConceitoAta);
+
 module.exports = router;

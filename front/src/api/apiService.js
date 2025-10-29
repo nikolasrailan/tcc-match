@@ -337,3 +337,10 @@ export const atualizarDetalhesBanca = (id_banca, data) =>
     method: "PATCH",
     body: JSON.stringify(data),
   });
+
+// Nova função para salvar conceitos da ata
+export const salvarConceitoAta = (id_banca, data) =>
+  fetchApi(`/bancas/${id_banca}/ata`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });

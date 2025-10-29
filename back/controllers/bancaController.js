@@ -9,6 +9,7 @@ const {
   Usuario,
   sequelize,
 } = require("../models");
+const PDFDocument = require("pdfkit"); // Certifique-se de que pdfkit está instalado
 
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -184,7 +185,7 @@ const bancaController = {
           {
             model: Orientacao,
             as: "orientacao",
-            attributes: ["id_orientacao"], // Apenas ID da orientação
+            attributes: ["id_orientacao", "id_professor"], // Inclui id_professor para saber o orientador
             include: [
               {
                 model: Aluno,
@@ -196,14 +197,14 @@ const bancaController = {
                 },
               },
               {
-                model: Professor,
+                model: Professor, // Orientador
                 as: "professor",
                 include: {
                   model: Usuario,
                   as: "usuario",
                   attributes: ["nome"],
                 },
-              }, // Orientador
+              },
               { model: IdeiaTcc, as: "ideiaTcc", attributes: ["titulo"] },
             ],
           },
@@ -249,47 +250,51 @@ const bancaController = {
 
       // Atualiza data_defesa se fornecida
       if (data_defesa !== undefined) {
-        const novaDataDefesa = new Date(data_defesa);
-        if (isNaN(novaDataDefesa.getTime())) {
-          await t.rollback();
-          return res
-            .status(400)
-            .json({ error: "Formato de data/hora inválido." });
-        }
-
-        // --- Verificação de Conflito ---
-        const dataInicioNova = novaDataDefesa;
-        const dataFimNova = new Date(dataInicioNova.getTime() + 30 * 60 * 1000); // Fim da nova = início + 30 min (buffer)
-        const dataInicioBufferAntes = new Date(
-          dataInicioNova.getTime() - 30 * 60 * 1000
-        );
-
-        const conflito = await Banca.findOne({
-          where: {
-            id_banca: { [Op.ne]: id_banca }, // Exclui a própria banca
-            data_defesa: {
-              [Op.ne]: null, // Considera apenas bancas com data definida
-              [Op.between]: [dataInicioBufferAntes, dataFimNova], // Verifica se alguma banca existente começa DENTRO do intervalo de buffer da nova
-              // Verifica se o INÍCIO de uma banca existente está entre (início_nova - 30min) e (início_nova + 30min)
-              // Isso cobre conflitos antes e depois, considerando o buffer de 30 minutos.
-            },
-          },
-          transaction: t,
-        });
-
-        if (conflito) {
-          await t.rollback();
-          const conflitoHora = conflito.data_defesa.toLocaleTimeString(
-            "pt-BR",
-            { hour: "2-digit", minute: "2-digit" }
+        if (data_defesa === null) {
+          dadosAtualizar.data_defesa = null; // Permite definir como nulo
+        } else {
+          const novaDataDefesa = new Date(data_defesa);
+          if (isNaN(novaDataDefesa.getTime())) {
+            await t.rollback();
+            return res
+              .status(400)
+              .json({ error: "Formato de data/hora inválido." });
+          }
+          // --- Verificação de Conflito ---
+          const dataInicioNova = novaDataDefesa;
+          const dataFimNova = new Date(
+            dataInicioNova.getTime() + 30 * 60 * 1000
+          ); // Fim da nova = início + 30 min (buffer)
+          const dataInicioBufferAntes = new Date(
+            dataInicioNova.getTime() - 30 * 60 * 1000
           );
-          return res.status(409).json({
-            error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
-          });
-        }
-        // --- Fim Verificação de Conflito ---
 
-        dadosAtualizar.data_defesa = novaDataDefesa;
+          const conflito = await Banca.findOne({
+            where: {
+              id_banca: { [Op.ne]: id_banca }, // Exclui a própria banca
+              data_defesa: {
+                [Op.ne]: null,
+                [Op.between]: [dataInicioBufferAntes, dataFimNova],
+              },
+            },
+            transaction: t,
+          });
+
+          if (conflito) {
+            await t.rollback();
+            const conflitoHora = conflito.data_defesa.toLocaleTimeString(
+              "pt-BR",
+              { hour: "2-digit", minute: "2-digit" }
+            );
+            return res
+              .status(409)
+              .json({
+                error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
+              });
+          }
+          // --- Fim Verificação de Conflito ---
+          dadosAtualizar.data_defesa = novaDataDefesa;
+        }
       }
 
       if (local_defesa !== undefined) {
@@ -299,19 +304,67 @@ const bancaController = {
       if (Object.keys(dadosAtualizar).length > 0) {
         await banca.update(dadosAtualizar, { transaction: t });
       } else {
-        await t.rollback();
-
-        return res.status(200).json({ message: "Nenhum dado para atualizar." });
+        // Se não houver dados para atualizar, apenas rollback (ou commit se não houver erro)
+        await t.commit(); // Commit mesmo sem alterações para finalizar a transação
+        // Retorna a banca original sem modificações
+        const bancaOriginal = await Banca.findByPk(id_banca, {
+          include: [
+            // Inclui as associações necessárias para retornar os dados completos
+            {
+              model: Orientacao,
+              as: "orientacao",
+              attributes: ["id_orientacao", "id_professor"],
+              include: [
+                {
+                  model: Aluno,
+                  as: "aluno",
+                  include: {
+                    model: Usuario,
+                    as: "dadosUsuario",
+                    attributes: ["nome"],
+                  },
+                },
+                {
+                  model: Professor,
+                  as: "professor",
+                  include: {
+                    model: Usuario,
+                    as: "usuario",
+                    attributes: ["nome"],
+                  },
+                },
+                { model: IdeiaTcc, as: "ideiaTcc", attributes: ["titulo"] },
+              ],
+            },
+            {
+              model: Professor,
+              as: "avaliador1",
+              include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+            },
+            {
+              model: Professor,
+              as: "avaliador2",
+              include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+            },
+            {
+              model: Professor,
+              as: "avaliador3",
+              include: { model: Usuario, as: "usuario", attributes: ["nome"] },
+            },
+          ],
+        });
+        return res.status(200).json(bancaOriginal);
       }
 
-      await t.commit();
+      await t.commit(); // Confirma a transação
 
+      // Busca a banca atualizada com todas as associações para retornar ao frontend
       const bancaAtualizada = await Banca.findByPk(id_banca, {
         include: [
           {
             model: Orientacao,
             as: "orientacao",
-            attributes: ["id_orientacao"],
+            attributes: ["id_orientacao", "id_professor"],
             include: [
               {
                 model: Aluno,
@@ -354,11 +407,67 @@ const bancaController = {
 
       res.status(200).json(bancaAtualizada);
     } catch (error) {
-      await t.rollback();
+      await t.rollback(); // Desfaz a transação em caso de erro
       console.error("Erro ao atualizar detalhes da banca:", error);
       res
         .status(500)
         .json({ error: "Ocorreu um erro ao atualizar os detalhes da banca." });
+    }
+  },
+
+  // Nova função para salvar o conceito da ata
+  async salvarConceitoAta(req, res) {
+    const t = await sequelize.transaction();
+    try {
+      const { id_banca } = req.params;
+      const { conceito_aprovacao, conceito_final } = req.body;
+
+      // Validação básica dos conceitos
+      const conceitosAprovacaoValidos = [
+        "aprovado",
+        "aprovado_com_ressalvas",
+        "reprovado",
+      ];
+      const conceitosFinaisValidos = ["A", "B", "C", "D"];
+
+      if (
+        !conceito_aprovacao ||
+        !conceitosAprovacaoValidos.includes(conceito_aprovacao)
+      ) {
+        await t.rollback();
+        return res
+          .status(400)
+          .json({ error: "Conceito de aprovação inválido." });
+      }
+      if (!conceito_final || !conceitosFinaisValidos.includes(conceito_final)) {
+        await t.rollback();
+        return res.status(400).json({ error: "Conceito final inválido." });
+      }
+
+      const banca = await Banca.findByPk(id_banca, { transaction: t });
+      if (!banca) {
+        await t.rollback();
+        return res.status(404).json({ error: "Banca não encontrada." });
+      }
+
+      // Atualiza os conceitos na banca
+      await banca.update(
+        {
+          conceito_aprovacao,
+          conceito_final,
+        },
+        { transaction: t }
+      );
+
+      await t.commit(); // Confirma a transação
+
+      res.status(200).json({ message: "Conceitos da ata salvos com sucesso." });
+    } catch (error) {
+      await t.rollback();
+      console.error("Erro ao salvar conceitos da ata:", error);
+      res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao salvar os conceitos da ata." });
     }
   },
 };
