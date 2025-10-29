@@ -6,13 +6,16 @@ const {
   IdeiaTcc,
   Banca,
   Aluno,
-  Curso,
   Usuario,
+  Curso, // Adiciona Curso
   sequelize,
 } = require("../models");
-const PDFDocument = require("pdfkit");
-const { ptBR } = require("date-fns/locale");
+const PDFDocument = require("pdfkit"); // pdfkit já está instalado
 
+// REMOVIDO: const { format, parseISO, isValid } = require('date-fns');
+// REMOVIDO: const { ptBR } = require('date-fns/locale');
+
+// ... (função shuffleArray existente) ...
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -21,6 +24,7 @@ function shuffleArray(array) {
 }
 
 const bancaController = {
+  // ... (função gerarBancas existente - vou omitir por brevidade, mas ela existe) ...
   async gerarBancas(req, res) {
     const t = await sequelize.transaction();
     try {
@@ -179,7 +183,7 @@ const bancaController = {
     }
   },
 
-  // Função para listar as bancas geradas (para o admin visualizar)
+  // ... (função listarBancas existente - vou omitir por brevidade, mas ela existe) ...
   async listarBancas(req, res) {
     try {
       const bancas = await Banca.findAll({
@@ -187,7 +191,7 @@ const bancaController = {
           {
             model: Orientacao,
             as: "orientacao",
-            attributes: ["id_orientacao", "id_professor"], // Inclui id_professor para saber o orientador
+            attributes: ["id_orientacao"], // Apenas ID da orientação
             include: [
               {
                 model: Aluno,
@@ -199,14 +203,14 @@ const bancaController = {
                 },
               },
               {
-                model: Professor, // Orientador
+                model: Professor,
                 as: "professor",
                 include: {
                   model: Usuario,
                   as: "usuario",
                   attributes: ["nome"],
                 },
-              },
+              }, // Orientador
               { model: IdeiaTcc, as: "ideiaTcc", attributes: ["titulo"] },
             ],
           },
@@ -235,7 +239,7 @@ const bancaController = {
     }
   },
 
-  // Função para atualizar data e local da defesa (pelo Admin)
+  // ... (função atualizarDetalhesBanca existente - vou omitir por brevidade, mas ela existe) ...
   async atualizarDetalhesBanca(req, res) {
     const t = await sequelize.transaction(); // Inicia transação
     try {
@@ -252,49 +256,47 @@ const bancaController = {
 
       // Atualiza data_defesa se fornecida
       if (data_defesa !== undefined) {
-        if (data_defesa === null) {
-          dadosAtualizar.data_defesa = null; // Permite definir como nulo
-        } else {
-          const novaDataDefesa = new Date(data_defesa);
-          if (isNaN(novaDataDefesa.getTime())) {
-            await t.rollback();
-            return res
-              .status(400)
-              .json({ error: "Formato de data/hora inválido." });
-          }
-          // --- Verificação de Conflito ---
-          const dataInicioNova = novaDataDefesa;
-          const dataFimNova = new Date(
-            dataInicioNova.getTime() + 30 * 60 * 1000
-          ); // Fim da nova = início + 30 min (buffer)
-          const dataInicioBufferAntes = new Date(
-            dataInicioNova.getTime() - 30 * 60 * 1000
-          );
-
-          const conflito = await Banca.findOne({
-            where: {
-              id_banca: { [Op.ne]: id_banca }, // Exclui a própria banca
-              data_defesa: {
-                [Op.ne]: null,
-                [Op.between]: [dataInicioBufferAntes, dataFimNova],
-              },
-            },
-            transaction: t,
-          });
-
-          if (conflito) {
-            await t.rollback();
-            const conflitoHora = conflito.data_defesa.toLocaleTimeString(
-              "pt-BR",
-              { hour: "2-digit", minute: "2-digit" }
-            );
-            return res.status(409).json({
-              error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
-            });
-          }
-          // --- Fim Verificação de Conflito ---
-          dadosAtualizar.data_defesa = novaDataDefesa;
+        const novaDataDefesa = new Date(data_defesa);
+        if (isNaN(novaDataDefesa.getTime())) {
+          await t.rollback();
+          return res
+            .status(400)
+            .json({ error: "Formato de data/hora inválido." });
         }
+
+        // --- Verificação de Conflito ---
+        const dataInicioNova = novaDataDefesa;
+        const dataFimNova = new Date(dataInicioNova.getTime() + 30 * 60 * 1000); // Fim da nova = início + 30 min (buffer)
+        const dataInicioBufferAntes = new Date(
+          dataInicioNova.getTime() - 30 * 60 * 1000
+        );
+
+        const conflito = await Banca.findOne({
+          where: {
+            id_banca: { [Op.ne]: id_banca }, // Exclui a própria banca
+            data_defesa: {
+              [Op.ne]: null, // Considera apenas bancas com data definida
+              [Op.between]: [dataInicioBufferAntes, dataFimNova], // Verifica se alguma banca existente começa DENTRO do intervalo de buffer da nova
+              // Verifica se o INÍCIO de uma banca existente está entre (início_nova - 30min) e (início_nova + 30min)
+              // Isso cobre conflitos antes e depois, considerando o buffer de 30 minutos.
+            },
+          },
+          transaction: t,
+        });
+
+        if (conflito) {
+          await t.rollback();
+          const conflitoHora = conflito.data_defesa.toLocaleTimeString(
+            "pt-BR",
+            { hour: "2-digit", minute: "2-digit" }
+          );
+          return res.status(409).json({
+            error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
+          });
+        }
+        // --- Fim Verificação de Conflito ---
+
+        dadosAtualizar.data_defesa = novaDataDefesa;
       }
 
       if (local_defesa !== undefined) {
@@ -304,67 +306,19 @@ const bancaController = {
       if (Object.keys(dadosAtualizar).length > 0) {
         await banca.update(dadosAtualizar, { transaction: t });
       } else {
-        // Se não houver dados para atualizar, apenas rollback (ou commit se não houver erro)
-        await t.commit(); // Commit mesmo sem alterações para finalizar a transação
-        // Retorna a banca original sem modificações
-        const bancaOriginal = await Banca.findByPk(id_banca, {
-          include: [
-            // Inclui as associações necessárias para retornar os dados completos
-            {
-              model: Orientacao,
-              as: "orientacao",
-              attributes: ["id_orientacao", "id_professor"],
-              include: [
-                {
-                  model: Aluno,
-                  as: "aluno",
-                  include: {
-                    model: Usuario,
-                    as: "dadosUsuario",
-                    attributes: ["nome"],
-                  },
-                },
-                {
-                  model: Professor,
-                  as: "professor",
-                  include: {
-                    model: Usuario,
-                    as: "usuario",
-                    attributes: ["nome"],
-                  },
-                },
-                { model: IdeiaTcc, as: "ideiaTcc", attributes: ["titulo"] },
-              ],
-            },
-            {
-              model: Professor,
-              as: "avaliador1",
-              include: { model: Usuario, as: "usuario", attributes: ["nome"] },
-            },
-            {
-              model: Professor,
-              as: "avaliador2",
-              include: { model: Usuario, as: "usuario", attributes: ["nome"] },
-            },
-            {
-              model: Professor,
-              as: "avaliador3",
-              include: { model: Usuario, as: "usuario", attributes: ["nome"] },
-            },
-          ],
-        });
-        return res.status(200).json(bancaOriginal);
+        await t.rollback();
+
+        return res.status(200).json({ message: "Nenhum dado para atualizar." });
       }
 
-      await t.commit(); // Confirma a transação
+      await t.commit();
 
-      // Busca a banca atualizada com todas as associações para retornar ao frontend
       const bancaAtualizada = await Banca.findByPk(id_banca, {
         include: [
           {
             model: Orientacao,
             as: "orientacao",
-            attributes: ["id_orientacao", "id_professor"],
+            attributes: ["id_orientacao"],
             include: [
               {
                 model: Aluno,
@@ -407,13 +361,14 @@ const bancaController = {
 
       res.status(200).json(bancaAtualizada);
     } catch (error) {
-      await t.rollback(); // Desfaz a transação em caso de erro
+      await t.rollback();
       console.error("Erro ao atualizar detalhes da banca:", error);
       res
         .status(500)
         .json({ error: "Ocorreu um erro ao atualizar os detalhes da banca." });
     }
   },
+
   // ADICIONANDO A FUNÇÃO QUE FALTAVA
   async salvarConceitoAta(req, res) {
     const t = await sequelize.transaction();
@@ -450,7 +405,7 @@ const bancaController = {
   },
   // FIM DA ADIÇÃO
 
-  // ... (função gerarAtaPdf existente) ...
+  // ... (função gerarAtaPdf existente - COM CORREÇÃO DE DATE-FNS) ...
   async gerarAtaPdf(req, res) {
     try {
       const { id_banca } = req.params;
@@ -525,19 +480,37 @@ const bancaController = {
       const tituloProjeto =
         banca.orientacao?.ideiaTcc?.titulo || "[Título Projeto]";
       const curso = banca.orientacao?.aluno?.cursoInfo?.nome || "[Nome Curso]";
-      const dataDefesa = banca.data_defesa
-        ? parseISO(banca.data_defesa.toISOString())
-        : null; // Parse ISO string
-      const dia =
-        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "dd") : "__";
-      const mes =
-        dataDefesa && isValid(dataDefesa)
-          ? format(dataDefesa, "MMMM", { locale: ptBR })
-          : "__";
-      const ano =
-        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "yyyy") : "__";
-      const hora =
-        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "HH:mm") : "__";
+
+      // CORREÇÃO: Usar new Date() e métodos nativos
+      const dataDefesa = banca.data_defesa ? new Date(banca.data_defesa) : null;
+
+      const dia = dataDefesa
+        ? dataDefesa.toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            timeZone: "America/Sao_Paulo",
+          })
+        : "__";
+      const mes = dataDefesa
+        ? dataDefesa.toLocaleDateString("pt-BR", {
+            month: "long",
+            timeZone: "America/Sao_Paulo",
+          })
+        : "__";
+      const ano = dataDefesa
+        ? dataDefesa.toLocaleDateString("pt-BR", {
+            year: "numeric",
+            timeZone: "America/Sao_Paulo",
+          })
+        : "__";
+      const hora = dataDefesa
+        ? dataDefesa.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "America/Sao_Paulo",
+          })
+        : "__";
+      // FIM DA CORREÇÃO
+
       const local = banca.local_defesa || "[Local não definido]";
 
       const orientador =
@@ -639,8 +612,7 @@ const bancaController = {
       // Assinaturas (simuladas)
       const signatureY = doc.y; // Pega a posição atual
       const signatureWidth = 200;
-      const pageWidth =
-        doc.page.width - doc.page.margins.left - doc.page.margins.right;
+      // const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
       const startX = doc.page.margins.left; // Começa na margem esquerda
 
       doc.text("___________________________", startX, signatureY, {
