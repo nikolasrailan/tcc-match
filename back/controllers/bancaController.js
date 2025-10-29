@@ -405,7 +405,6 @@ const bancaController = {
   },
   // FIM DA ADIÇÃO
 
-  // ... (função gerarAtaPdf existente - COM CORREÇÃO DE DATE-FNS) ...
   async gerarAtaPdf(req, res) {
     try {
       const { id_banca } = req.params;
@@ -459,18 +458,12 @@ const bancaController = {
         return res.status(404).json({ error: "Banca não encontrada." });
       }
 
-      // Verifica se os dados essenciais para a ata existem
-      if (
-        !banca.data_defesa ||
-        !banca.local_defesa ||
-        !banca.conceito_aprovacao ||
-        !banca.conceito_final
-      ) {
+      if (!banca.data_defesa || !banca.local_defesa) {
         return res
           .status(400)
           .json({
             error:
-              "Dados incompletos para gerar a ata (Data, Local ou Conceitos).",
+              "Dados incompletos para gerar a ata (Data ou Local não definidos).",
           });
       }
 
@@ -480,37 +473,19 @@ const bancaController = {
       const tituloProjeto =
         banca.orientacao?.ideiaTcc?.titulo || "[Título Projeto]";
       const curso = banca.orientacao?.aluno?.cursoInfo?.nome || "[Nome Curso]";
-
-      // CORREÇÃO: Usar new Date() e métodos nativos
-      const dataDefesa = banca.data_defesa ? new Date(banca.data_defesa) : null;
-
-      const dia = dataDefesa
-        ? dataDefesa.toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            timeZone: "America/Sao_Paulo",
-          })
-        : "__";
-      const mes = dataDefesa
-        ? dataDefesa.toLocaleDateString("pt-BR", {
-            month: "long",
-            timeZone: "America/Sao_Paulo",
-          })
-        : "__";
-      const ano = dataDefesa
-        ? dataDefesa.toLocaleDateString("pt-BR", {
-            year: "numeric",
-            timeZone: "America/Sao_Paulo",
-          })
-        : "__";
-      const hora = dataDefesa
-        ? dataDefesa.toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "America/Sao_Paulo",
-          })
-        : "__";
-      // FIM DA CORREÇÃO
-
+      const dataDefesa = banca.data_defesa
+        ? parseISO(banca.data_defesa.toISOString())
+        : null;
+      const dia =
+        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "dd") : "__";
+      const mes =
+        dataDefesa && isValid(dataDefesa)
+          ? format(dataDefesa, "MMMM", { locale: ptBR })
+          : "__";
+      const ano =
+        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "yyyy") : "__";
+      const hora =
+        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "HH:mm") : "__";
       const local = banca.local_defesa || "[Local não definido]";
 
       const orientador =
@@ -534,7 +509,6 @@ const bancaController = {
         margins: { top: 50, bottom: 50, left: 72, right: 72 },
       });
 
-      // Configura headers para download
       const filename = `Ata_Defesa_${nomeAluno.replace(/\s+/g, "_")}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
@@ -558,19 +532,17 @@ const bancaController = {
       doc.text(textoPrincipal, { align: "justify", lineGap: 4 });
       doc.moveDown(1);
 
-      // Membros da Banca
       doc
         .font("Helvetica-Bold")
-        .text("Banca Examinadora:", { continued: false }); // Garante nova linha
+        .text("Banca Examinadora:", { continued: false });
       doc.moveDown(0.5);
       doc.font("Helvetica");
       bancaExaminadoraNomes.forEach((nome, index) => {
         const role = index === 0 ? " (Presidente da Banca)" : "";
-        doc.list([`${nome}${role}`], { bulletRadius: 0, textIndent: 10 }); // Usa list para indentação
+        doc.list([`${nome}${role}`], { bulletRadius: 0, textIndent: 10 });
       });
       doc.moveDown(1);
 
-      // Resultado
       doc.text(
         "Após a apresentação e as observações dos referidos professores, ficou definido que o trabalho foi considerado:",
         { align: "justify", lineGap: 4 }
@@ -591,29 +563,27 @@ const bancaController = {
       doc.text("Com conceito final:", { lineGap: 4 });
       doc.moveDown(0.5);
       const conceitosFinais = ["A", "B", "C", "D"];
-      // Exibe lado a lado
       let conceitoText = conceitosFinais
         .map((cf) => {
           const marcador = conceitoFinal === cf ? "[X]" : "[ ]";
           return `${marcador} ${cf}`;
         })
-        .join("      "); // Adiciona espaço entre as opções
+        .join("      ");
       doc.text(conceitoText, { indent: 10 });
 
       doc.moveDown(1.5);
 
-      // Texto Final
       doc.text(
         "Nada mais havendo, eu, presidente da banca, lavrei a presente ata que segue assinada por mim e demais membros.",
         { align: "justify", lineGap: 4 }
       );
       doc.moveDown(3);
 
-      // Assinaturas (simuladas)
-      const signatureY = doc.y; // Pega a posição atual
+      const signatureY = doc.y;
       const signatureWidth = 200;
-      // const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-      const startX = doc.page.margins.left; // Começa na margem esquerda
+      const pageWidth =
+        doc.page.width - doc.page.margins.left - doc.page.margins.right;
+      const startX = doc.page.margins.left;
 
       doc.text("___________________________", startX, signatureY, {
         width: signatureWidth,

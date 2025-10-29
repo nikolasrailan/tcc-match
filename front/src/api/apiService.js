@@ -344,3 +344,7 @@ export const salvarConceitoAta = (id_banca, data) =>
     method: "PATCH",
     body: JSON.stringify(data),
   });
+
+// ADICIONAR EXPORT FALTANTE
+export const downloadAtaPdf = (id_banca) =>
+  fetchApi(`/bancas/${id_banca}/download-ata`, { method: "GET" });
