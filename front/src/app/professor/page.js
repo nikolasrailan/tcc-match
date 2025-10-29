@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+
+// Componente Modal separado (como estava antes)
 const SolicitacaoModal = ({ open, onClose, solicitacao, onResponder }) => {
   if (!open || !solicitacao) return null;
 
@@ -138,9 +140,13 @@ export default function ProfessorDashboardPage() {
     try {
       const result = await responderSolicitacao(id, aceito);
       if (result) {
-        toast.success(
-          `Solicitação ${aceito ? "aceita" : "rejeitada"} com sucesso!`
-        );
+        if (aceito) {
+          toast.success("Solicitação aceita com sucesso!", {
+            description: "Agora é possível baixar o documento de ciência.", // Mensagem adicionada
+          });
+        } else {
+          toast.success("Solicitação rejeitada com sucesso!");
+        }
         handleCloseModal();
         fetchData();
       } else {

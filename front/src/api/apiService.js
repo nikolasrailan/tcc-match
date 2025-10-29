@@ -25,6 +25,20 @@ async function fetchApi(endpoint, options = {}) {
     );
 
     const contentType = response.headers.get("content-type");
+
+    // Handle PDF download specifically
+    if (contentType && contentType.includes("application/pdf")) {
+      if (!response.ok) {
+        // Try to get error message from text for PDF errors
+        const textError = await response.text();
+        throw new Error(
+          textError || `Erro ${response.status}: ${response.statusText}`
+        );
+      }
+      return response.blob(); // Return the PDF blob directly
+    }
+
+    // Handle other non-OK responses
     if (!response.ok) {
       let errorData = { message: response.statusText || "Erro na requisição" };
       if (contentType && contentType.includes("application/json")) {
@@ -36,33 +50,26 @@ async function fetchApi(endpoint, options = {}) {
               .map((err) => err.msg || err.message)
               .join("\n");
           }
-          // Adiciona os alertas da API de gerar bancas ao erro, se existirem
           if (body.alertas) {
             errorData.alertas = body.alertas;
-            // Opcionalmente, adicionar ao message principal
-            // errorData.message += `\nAlertas:\n${body.alertas.join('\n')}`;
           }
         } catch (e) {
-          // Se não conseguir parsear o JSON do erro, usa o statusText
           errorData.message = `Erro ${response.status}: ${
             response.statusText || "Erro desconhecido"
           }`;
         }
       } else {
-        // Se não for JSON, tenta pegar o texto do erro
         try {
           const textError = await response.text();
           if (textError) {
             errorData.message = textError;
           }
         } catch (e) {
-          // Mantém a mensagem original se não conseguir ler o texto
           errorData.message = `Erro ${response.status}: ${
             response.statusText || "Erro desconhecido"
           }`;
         }
       }
-      // Cria um erro que pode conter a propriedade 'alertas'
       const error = new Error(errorData.message);
       if (errorData.alertas) {
         error.alertas = errorData.alertas;
@@ -72,7 +79,7 @@ async function fetchApi(endpoint, options = {}) {
 
     // Handle No Content response
     if (response.status === 204) {
-      return { success: true }; // Ou null, dependendo de como você quer tratar
+      return { success: true };
     }
 
     // Tenta parsear JSON se o content-type for adequado
@@ -80,18 +87,15 @@ async function fetchApi(endpoint, options = {}) {
       return await response.json();
     }
 
-    // Se não for JSON, tenta retornar como texto (para mensagens simples)
+    // Se não for JSON, tenta retornar como texto
     try {
       const textResponse = await response.text();
-      // Retorna um objeto com a mensagem se houver texto, senão um sucesso genérico
       return textResponse ? { message: textResponse } : { success: true };
     } catch (e) {
-      // Se não conseguir ler como texto (improvável aqui), retorna sucesso genérico
       return { success: true };
     }
   } catch (error) {
     console.error(`Erro na chamada da API para ${endpoint}:`, error);
-    // Re-throw para que a função chamadora possa tratar
     throw error;
   }
 }
@@ -138,6 +142,10 @@ export const updateOrientacao = (id, data) =>
     method: "PATCH",
     body: JSON.stringify(data),
   });
+
+// Função para baixar o PDF de Ciência de Orientação
+export const downloadCienciaPdf = (id_orientacao) =>
+  fetchApi(`/orientacoes/${id_orientacao}/ciencia-pdf`, { method: "GET" }); // GET request, expecting blob
 
 // Funções de Cancelamento/Encerramento de Orientação
 export const solicitarCancelamentoOrientacao = (id) =>

@@ -9,6 +9,8 @@ router.get("/", orientacaoController.getOrientacao);
 
 router.patch("/:id", orientacaoController.updateOrientacao);
 
+router.get("/:id/ciencia-pdf", orientacaoController.gerarCienciaPdf);
+
 // --- Rotas de Finalização e Cancelamento ---
 // Rota PATCH para o Professor finalizar a orientação
 router.patch("/:id/finalizar", orientacaoController.finalizarOrientacao);

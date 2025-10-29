@@ -10,6 +10,7 @@ import {
   finalizarOrientacao,
   solicitarFinalizacaoOrientacao, // Importa solicitar finalização
   confirmarFinalizacaoOrientacao, // Importa confirmar finalização
+  downloadCienciaPdf, // Importa a nova função da API
 } from "@/api/apiService";
 import {
   Card,
@@ -47,6 +48,7 @@ import {
   Loader2,
   CheckCircle,
   CheckCheck, // Novo ícone para solicitar finalização
+  Download, // Ícone para download
 } from "lucide-react";
 import ConfirmationDialog from "../reuniao/ConfirmacaoDialog"; // Correct import for the confirmation dialog
 import ReuniaoModal from "../reuniao/ReuniaoModal";
@@ -81,6 +83,7 @@ const OrientacaoCard = ({
   const [feedbackActionType, setFeedbackActionType] = useState(null); // 'cancel', 'finalize', 'confirm-finalize'
   const [feedbackText, setFeedbackText] = useState("");
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false); // State for download loading
 
   // Gera IDs únicos para acessibilidade dos diálogos
   const feedbackDialogTitleId = React.useId(); // Use React.useId() para gerar IDs únicos
@@ -346,6 +349,31 @@ const OrientacaoCard = ({
     }
   };
 
+  // Função para baixar o PDF de Ciência
+  const handleDownloadCiencia = async () => {
+    setIsDownloading(true);
+    try {
+      const blob = await downloadCienciaPdf(orientacao.id_orientacao);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // Define o nome do arquivo (opcional, o backend já define)
+      const alunoNome = orientacao.aluno?.dadosUsuario?.nome || "aluno";
+      a.download = `ciencia_orientacao_${alunoNome.replace(/\s+/g, "_")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Download do documento iniciado.");
+    } catch (error) {
+      toast.error("Erro ao baixar o documento.", {
+        description: error.message,
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // ------------------------------
 
   // Conta tópicos não lidos pelo professor
@@ -440,86 +468,108 @@ const OrientacaoCard = ({
     orientacao.solicitacao_cancelamento === "aluno" &&
     !isSubmittingAction;
 
+  // Condição para mostrar o botão de download (orientação iniciada)
+  const canDownloadCiencia = [
+    "em desenvolvimento",
+    "pausado",
+    "finalizado",
+  ].includes(orientacao.status);
+
   return (
     <Card className="max-w-4xl mx-auto relative">
-      {/* Botão de Engrenagem e Dropdown (Apenas se não finalizado/encerrado/cancelado) */}
-      {!["finalizado", "encerrado", "cancelado"].includes(
-        orientacao.status
-      ) && (
-        <div className="absolute top-4 right-4 z-10">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={isSubmittingAction} // Desabilita durante qualquer ação
-                aria-label="Opções da Orientação"
+      {/* Botão de Engrenagem e Dropdown */}
+      <div className="absolute top-4 right-4 z-10">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={isSubmittingAction || isDownloading} // Desabilita durante qualquer ação ou download
+              aria-label="Opções da Orientação"
+            >
+              {isSubmittingAction || isDownloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Settings className="h-4 w-4" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {/* Opção Download Ciência */}
+            {canDownloadCiencia && (
+              <DropdownMenuItem
+                onClick={handleDownloadCiencia}
+                disabled={isDownloading}
               >
-                {isSubmittingAction ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Settings className="h-4 w-4" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {/* Opção Solicitar Finalização (Aluno) */}
-              {userRole === "aluno" && canSolicitarFinalizacao && (
-                <DropdownMenuItem
-                  className="text-green-600 focus:text-green-700 focus:bg-green-50 dark:focus:bg-green-900/50"
-                  onClick={handleSolicitarFinalizacao}
-                  disabled={isSubmittingAction}
-                >
-                  <CheckCheck className="mr-2 h-4 w-4" />
-                  Solicitar Finalização
-                </DropdownMenuItem>
-              )}
-
-              {/* Opção Finalizar TCC Direto (Professor) */}
-              {userRole === "professor" && canFinalizar && (
-                <DropdownMenuItem
-                  className="text-green-600 focus:text-green-700 focus:bg-green-50 dark:focus:bg-green-900/50"
-                  onClick={handleOpenFinalizarOrientacaoModal}
-                  disabled={isSubmittingAction}
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Finalizar TCC (Direto)
-                </DropdownMenuItem>
-              )}
-
-              {/* Separador */}
-              {(canSolicitarFinalizacao ||
+                <Download className="mr-2 h-4 w-4" />
+                Baixar Termo de Ciência
+              </DropdownMenuItem>
+            )}
+            {/* Separator if download is possible AND other actions are possible */}
+            {canDownloadCiencia &&
+              (canSolicitarFinalizacao ||
                 canFinalizar ||
                 canSolicitarCancelamento ||
-                canCancelarDireto) && <DropdownMenuSeparator />}
+                canCancelarDireto ||
+                canConfirmarFinalizacao ||
+                canConfirmarCancelamento) && <DropdownMenuSeparator />}
 
-              {/* Opção Cancelar Orientação (Professor) */}
-              {userRole === "professor" && canCancelarDireto && (
-                <DropdownMenuItem
-                  className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-900/50"
-                  onClick={handleCancelarDireto}
-                  disabled={isSubmittingAction}
-                >
-                  <Ban className="mr-2 h-4 w-4" />
-                  Cancelar Orientação
-                </DropdownMenuItem>
+            {/* Opção Solicitar Finalização (Aluno) */}
+            {userRole === "aluno" && canSolicitarFinalizacao && (
+              <DropdownMenuItem
+                className="text-green-600 focus:text-green-700 focus:bg-green-50 dark:focus:bg-green-900/50"
+                onClick={handleSolicitarFinalizacao}
+                disabled={isSubmittingAction}
+              >
+                <CheckCheck className="mr-2 h-4 w-4" />
+                Solicitar Finalização
+              </DropdownMenuItem>
+            )}
+
+            {/* Opção Finalizar TCC Direto (Professor) */}
+            {userRole === "professor" && canFinalizar && (
+              <DropdownMenuItem
+                className="text-green-600 focus:text-green-700 focus:bg-green-50 dark:focus:bg-green-900/50"
+                onClick={handleOpenFinalizarOrientacaoModal}
+                disabled={isSubmittingAction}
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Finalizar TCC (Direto)
+              </DropdownMenuItem>
+            )}
+
+            {/* Separador se houver ações de finalização E cancelamento */}
+            {(canSolicitarFinalizacao || canFinalizar) &&
+              (canSolicitarCancelamento || canCancelarDireto) && (
+                <DropdownMenuSeparator />
               )}
 
-              {/* Opção Solicitar Cancelamento (Aluno) */}
-              {userRole === "aluno" && canSolicitarCancelamento && (
-                <DropdownMenuItem
-                  className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-900/50"
-                  onClick={handleSolicitarCancelamento}
-                  disabled={isSubmittingAction}
-                >
-                  <Ban className="mr-2 h-4 w-4" />
-                  Solicitar Cancelamento
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
+            {/* Opção Cancelar Orientação (Professor) */}
+            {userRole === "professor" && canCancelarDireto && (
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-900/50"
+                onClick={handleCancelarDireto}
+                disabled={isSubmittingAction}
+              >
+                <Ban className="mr-2 h-4 w-4" />
+                Cancelar Orientação
+              </DropdownMenuItem>
+            )}
+
+            {/* Opção Solicitar Cancelamento (Aluno) */}
+            {userRole === "aluno" && canSolicitarCancelamento && (
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-900/50"
+                onClick={handleSolicitarCancelamento}
+                disabled={isSubmittingAction}
+              >
+                <Ban className="mr-2 h-4 w-4" />
+                Solicitar Cancelamento
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Cabeçalho do Card */}
       <CardHeader>
@@ -702,9 +752,7 @@ const OrientacaoCard = ({
         )}
 
         {/* Seções de Tópicos e Reuniões (se aplicável) */}
-        {!["finalizado", "cancelado", "encerrado"].includes(
-          orientacao.status
-        ) && (
+        {!["cancelado", "encerrado"].includes(orientacao.status) && (
           <>
             <TopicosSection
               onOpen={() => setTopicosModalOpen(true)}
