@@ -13,4 +13,6 @@ router.patch("/:id_banca", bancaController.atualizarDetalhesBanca);
 
 router.patch("/:id_banca/ata", bancaController.salvarConceitoAta);
 
+router.get("/:id_banca/download-ata", bancaController.gerarAtaPdf);
+
 module.exports = router;

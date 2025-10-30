@@ -369,7 +369,7 @@ const bancaController = {
     }
   },
 
-  // ADICIONANDO A FUNÇÃO QUE FALTAVA
+  // ... (função salvarConceitoAta existente) ...
   async salvarConceitoAta(req, res) {
     const t = await sequelize.transaction();
     try {
@@ -403,8 +403,8 @@ const bancaController = {
       res.status(500).json({ error: "Erro ao salvar conceito da ata." });
     }
   },
-  // FIM DA ADIÇÃO
 
+  // Função para gerar o PDF da Ata - AJUSTADA PARA RASCUNHO
   async gerarAtaPdf(req, res) {
     try {
       const { id_banca } = req.params;
@@ -458,13 +458,14 @@ const bancaController = {
         return res.status(404).json({ error: "Banca não encontrada." });
       }
 
+      // Verifica se os dados essenciais (data e local) existem
+      // REMOVIDO: || !banca.conceito_aprovacao || !banca.conceito_final da condição abaixo
       if (!banca.data_defesa || !banca.local_defesa) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Dados incompletos para gerar a ata (Data ou Local não definidos).",
-          });
+        return res.status(400).json({
+          error:
+            "Dados incompletos para gerar a ata (Data e/ou Local)." +
+            " Defina-os antes de baixar.", // Mensagem mais clara
+        });
       }
 
       // Extrai dados para o PDF
@@ -473,19 +474,34 @@ const bancaController = {
       const tituloProjeto =
         banca.orientacao?.ideiaTcc?.titulo || "[Título Projeto]";
       const curso = banca.orientacao?.aluno?.cursoInfo?.nome || "[Nome Curso]";
-      const dataDefesa = banca.data_defesa
-        ? parseISO(banca.data_defesa.toISOString())
-        : null;
-      const dia =
-        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "dd") : "__";
-      const mes =
-        dataDefesa && isValid(dataDefesa)
-          ? format(dataDefesa, "MMMM", { locale: ptBR })
-          : "__";
-      const ano =
-        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "yyyy") : "__";
-      const hora =
-        dataDefesa && isValid(dataDefesa) ? format(dataDefesa, "HH:mm") : "__";
+
+      const dataDefesa = banca.data_defesa ? new Date(banca.data_defesa) : null;
+      const dia = dataDefesa
+        ? dataDefesa.toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            timeZone: "America/Sao_Paulo",
+          })
+        : "__";
+      const mes = dataDefesa
+        ? dataDefesa.toLocaleDateString("pt-BR", {
+            month: "long",
+            timeZone: "America/Sao_Paulo",
+          })
+        : "__";
+      const ano = dataDefesa
+        ? dataDefesa.toLocaleDateString("pt-BR", {
+            year: "numeric",
+            timeZone: "America/Sao_Paulo",
+          })
+        : "__";
+      const hora = dataDefesa
+        ? dataDefesa.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "America/Sao_Paulo",
+          })
+        : "__";
+
       const local = banca.local_defesa || "[Local não definido]";
 
       const orientador =
@@ -500,8 +516,10 @@ const bancaController = {
         avaliador3,
       ].filter(Boolean);
 
-      const conceitoAprovacao = banca.conceito_aprovacao;
-      const conceitoFinal = banca.conceito_final;
+      // Usa os conceitos do banco de dados ou placeholders se forem null (para o rascunho)
+      const conceitoAprovacao = banca.conceito_aprovacao || null;
+      const conceitoFinal = banca.conceito_final || null;
+      const isRascunho = !banca.conceito_aprovacao || !banca.conceito_final;
 
       // Cria o documento PDF
       const doc = new PDFDocument({
@@ -509,7 +527,10 @@ const bancaController = {
         margins: { top: 50, bottom: 50, left: 72, right: 72 },
       });
 
-      const filename = `Ata_Defesa_${nomeAluno.replace(/\s+/g, "_")}.pdf`;
+      // Configura headers para download
+      const filename = `Ata_Defesa_${nomeAluno.replace(/\s+/g, "_")}${
+        isRascunho ? "_Rascunho" : ""
+      }.pdf`; // Adiciona "_Rascunho" ao nome do arquivo se necessário
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
@@ -532,58 +553,90 @@ const bancaController = {
       doc.text(textoPrincipal, { align: "justify", lineGap: 4 });
       doc.moveDown(1);
 
+      // Membros da Banca
       doc
         .font("Helvetica-Bold")
-        .text("Banca Examinadora:", { continued: false });
+        .text("Banca Examinadora:", { continued: false }); // Garante nova linha
       doc.moveDown(0.5);
       doc.font("Helvetica");
       bancaExaminadoraNomes.forEach((nome, index) => {
         const role = index === 0 ? " (Presidente da Banca)" : "";
-        doc.list([`${nome}${role}`], { bulletRadius: 0, textIndent: 10 });
+        doc.list([`${nome}${role}`], { bulletRadius: 0, textIndent: 10 }); // Usa list para indentação
       });
       doc.moveDown(1);
 
+      // Resultado - Condicionalmente exibe os conceitos ou um placeholder
       doc.text(
         "Após a apresentação e as observações dos referidos professores, ficou definido que o trabalho foi considerado:",
         { align: "justify", lineGap: 4 }
       );
       doc.moveDown(0.5);
 
+      // Mapa de opções
       const opcoesAprovacaoMap = {
         aprovado: "aprovado",
         aprovado_com_ressalvas: "aprovado com ressalvas",
         reprovado: "reprovado",
       };
-      for (const [key, value] of Object.entries(opcoesAprovacaoMap)) {
-        const marcador = conceitoAprovacao === key ? "[X]" : "[ ]";
-        doc.text(`${marcador} ${value}`, { indent: 10 });
-      }
-      doc.moveDown(0.5);
-
-      doc.text("Com conceito final:", { lineGap: 4 });
-      doc.moveDown(0.5);
       const conceitosFinais = ["A", "B", "C", "D"];
-      let conceitoText = conceitosFinais
-        .map((cf) => {
-          const marcador = conceitoFinal === cf ? "[X]" : "[ ]";
-          return `${marcador} ${cf}`;
-        })
-        .join("      ");
-      doc.text(conceitoText, { indent: 10 });
+
+      // Se for Rascunho (conceitos não salvos), mostra opções vazias [ ]
+      if (isRascunho) {
+        doc.font("Helvetica"); // Garante a fonte normal
+        doc.fillColor("black"); // Garante a cor normal
+
+        // Mostra opções de aprovação vazias
+        for (const [key, value] of Object.entries(opcoesAprovacaoMap)) {
+          doc.text(`[  ] ${value}`, { indent: 10 });
+        }
+        doc.moveDown(0.5);
+
+        doc.text("Com conceito final:", { lineGap: 4 });
+        doc.moveDown(0.5);
+
+        // Mostra conceitos finais vazios
+        let conceitoText = conceitosFinais
+          .map((cf) => `[ ] ${cf}`)
+          .join("      "); // Adiciona espaço entre as opções
+        doc.text(conceitoText, { indent: 10 });
+      } else {
+        // Se NÃO for rascunho (conceitos salvos), mostra opções marcadas [X]
+        doc.font("Helvetica");
+        doc.fillColor("black");
+
+        // Mostra opções de aprovação marcadas
+        for (const [key, value] of Object.entries(opcoesAprovacaoMap)) {
+          const marcador = conceitoAprovacao === key ? "[X]" : "[ ]";
+          doc.text(`${marcador} ${value}`, { indent: 10 });
+        }
+        doc.moveDown(0.5);
+
+        doc.text("Com conceito final:", { lineGap: 4 });
+        doc.moveDown(0.5);
+
+        // Mostra conceitos finais marcados
+        let conceitoText = conceitosFinais
+          .map((cf) => {
+            const marcador = conceitoFinal === cf ? "[X]" : "[  ]";
+            return `${marcador} ${cf}`;
+          })
+          .join("      ");
+        doc.text(conceitoText, { indent: 10 });
+      }
 
       doc.moveDown(1.5);
 
+      // Texto Final
       doc.text(
         "Nada mais havendo, eu, presidente da banca, lavrei a presente ata que segue assinada por mim e demais membros.",
         { align: "justify", lineGap: 4 }
       );
       doc.moveDown(3);
 
-      const signatureY = doc.y;
+      // Assinaturas (simuladas)
+      const signatureY = doc.y; // Pega a posição atual
       const signatureWidth = 200;
-      const pageWidth =
-        doc.page.width - doc.page.margins.left - doc.page.margins.right;
-      const startX = doc.page.margins.left;
+      const startX = doc.page.margins.left; // Começa na margem esquerda
 
       doc.text("___________________________", startX, signatureY, {
         width: signatureWidth,
@@ -602,6 +655,7 @@ const bancaController = {
       doc.end();
     } catch (error) {
       console.error("Erro ao gerar PDF da ata:", error);
+      // Retorna a mensagem de erro específica vinda do controller
       res.status(500).json({ error: "Erro ao gerar o documento PDF da ata." });
     }
   },
