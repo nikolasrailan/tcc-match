@@ -712,67 +712,67 @@ const bancaController = {
   exportarCalendarioBancas: async (req, res) => {
     try {
       const bancas = await Banca.findAll({
-        // Alterado db.Banca para Banca
+        // Corrigido de db.Banca
         include: [
           {
-            model: Orientacao, // Alterado db.Orientacao para Orientacao
+            model: Orientacao, // Corrigido de db.Orientacao
             as: "orientacao",
             required: true,
             include: [
               {
-                model: Aluno, // Alterado db.Aluno para Aluno
+                model: Aluno, // Corrigido de db.Aluno
                 as: "aluno",
                 attributes: ["id_aluno"], // Reduzido para apenas ID
                 include: {
-                  model: Usuario, // Alterado db.Usuario para Usuario
+                  model: Usuario, // Corrigido de db.Usuario
                   as: "dadosUsuario",
                   attributes: ["nome"],
                 },
               },
               {
-                model: Professor, // Alterado db.Professor para Professor
+                model: Professor, // Corrigido de db.Professor
                 as: "professor",
                 attributes: ["id_professor"], // Reduzido para apenas ID
                 include: {
-                  model: Usuario, // Alterado db.Usuario para Usuario
+                  model: Usuario, // Corrigido de db.Usuario
                   as: "usuario",
                   attributes: ["nome"],
                 },
               },
               {
-                model: IdeiaTcc, // Alterado db.IdeiaTcc para IdeiaTcc
+                model: IdeiaTcc, // Corrigido de db.IdeiaTcc
                 as: "ideiaTcc",
                 attributes: ["titulo"], // Removido 'artigo', pois não existe no modelo IdeiaTcc
               },
             ],
           },
           {
-            model: Professor, // Alterado db.Professor para Professor
+            model: Professor, // Corrigido de db.Professor
             as: "avaliador1", // Corrigido de 'membro_banca_1' para 'avaliador1'
             attributes: ["id_professor"], // Reduzido para apenas ID
             include: {
-              model: Usuario, // Alterado db.Usuario para Usuario
+              model: Usuario, // Corrigido de db.Usuario
               as: "usuario",
               attributes: ["nome"],
             },
           },
           {
-            model: Professor, // Alterado db.Professor para Professor
+            model: Professor, // Corrigido de db.Professor
             as: "avaliador2", // Corrigido de 'membro_banca_2' para 'avaliador2'
             attributes: ["id_professor"], // Reduzido para apenas ID
             include: {
-              model: Usuario, // Alterado db.Usuario para Usuario
+              model: Usuario, // Corrigido de db.Usuario
               as: "usuario",
               attributes: ["nome"],
             },
           },
           // Adicionado avaliador 3
           {
-            model: Professor, // Alterado db.Professor para Professor
+            model: Professor, // Corrigido de db.Professor
             as: "avaliador3",
             attributes: ["id_professor"], // Reduzido para apenas ID
             include: {
-              model: Usuario, // Alterado db.Usuario para Usuario
+              model: Usuario, // Corrigido de db.Usuario
               as: "usuario",
               attributes: ["nome"],
             },
@@ -802,9 +802,9 @@ const bancaController = {
         { header: "Projeto", key: "projeto", width: 50 }, // Removido "(com link)"
         { header: "Aluno(a)", key: "aluno", width: 30 },
         { header: "Orientador(a)", key: "orientador", width: 30 },
-        { header: "Avaliador 1", key: "banca1", width: 30 }, // Corrigido header
-        { header: "Avaliador 2", key: "banca2", width: 30 }, // Corrigido header
-        { header: "Avaliador 3", key: "banca3", width: 30 }, // Adicionado header
+        { header: "Avaliador 1", key: "banca1", width: 30 }, // Corrigido
+        { header: "Avaliador 2", key: "banca2", width: 30 }, // Corrigido
+        { header: "Avaliador 3", key: "banca3", width: 30 }, // Adicionado
       ];
 
       // Estilizar o cabeçalho
@@ -826,6 +826,24 @@ const bancaController = {
 
         const dataBanca = new Date(banca.data_defesa); // Corrigido para data_defesa
 
+        // Criar a célula de projeto com hyperlink
+        // const projetoUrl = banca.orientacao.ideiaTcc?.artigo; // 'artigo' não existe no modelo
+        let projetoCell = banca.orientacao.ideiaTcc?.titulo || "Sem Título";
+
+        // if (
+        //   projetoUrl &&
+        //   (projetoUrl.startsWith("http://") || projetoUrl.startsWith("https://"))
+        // ) {
+        //   projetoCell = {
+        //     text: banca.orientacao.ideiaTcc?.titulo || "Sem Título",
+        //     hyperlink: projetoUrl,
+        //     tooltip: "Clique para abrir o artigo",
+        //   };
+        // } else {
+        //   // Se não tiver URL ou for inválida, bota só o texto
+        //   projetoCell = banca.orientacao.ideiaTcc?.titulo || "Sem Título";
+        // }
+
         worksheet.addRow({
           data: dataBanca.toLocaleDateString("pt-BR", {
             timeZone: "America/Sao_Paulo",
@@ -836,7 +854,7 @@ const bancaController = {
             timeZone: "America/Sao_Paulo",
           }),
           local: banca.local_defesa, // Corrigido para local_defesa
-          projeto: banca.orientacao.ideiaTcc?.titulo || "Sem Título",
+          projeto: projetoCell,
           aluno: banca.orientacao.aluno?.dadosUsuario?.nome || "N/A",
           orientador: banca.orientacao.professor?.usuario?.nome || "N/A",
           banca1: banca.avaliador1?.usuario?.nome || "N/A", // Corrigido para avaliador1
@@ -844,6 +862,12 @@ const bancaController = {
           banca3: banca.avaliador3?.usuario?.nome || "N/A", // Adicionado avaliador3
         });
       });
+
+      // Estilizar a coluna de projeto para parecer um link
+      // worksheet.getColumn("projeto").font = {
+      //   color: { argb: "FF0000FF" },
+      //   underline: true,
+      // };
 
       // Configurar os headers da resposta para forçar o download
       res.setHeader(
