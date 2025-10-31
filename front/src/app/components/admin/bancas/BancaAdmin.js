@@ -20,6 +20,7 @@ import {
   gerarBancas,
   listarBancas,
   atualizarDetalhesBanca,
+  exportarCalendarioExcel, // Importar nova função
 } from "@/api/apiService";
 import { toast } from "sonner";
 import {
@@ -29,6 +30,7 @@ import {
   PencilIcon,
   ClockIcon,
   FileTextIcon,
+  FileSpreadsheet, // Importar novo ícone
 } from "lucide-react";
 import {
   Popover,
@@ -46,6 +48,7 @@ const BancaAdmin = () => {
   const [bancas, setBancas] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingGenerate, setLoadingGenerate] = useState(false);
+  const [loadingExcel, setLoadingExcel] = useState(false); // Novo estado de loading
   const [editingBanca, setEditingBanca] = useState(null);
   const [editData, setEditData] = useState({
     data_defesa: null,
@@ -90,6 +93,29 @@ const BancaAdmin = () => {
       }
     } finally {
       setLoadingGenerate(false);
+    }
+  };
+
+  // Nova função para exportar Excel
+  const handleExportarExcel = async () => {
+    setLoadingExcel(true);
+    try {
+      const blob = await exportarCalendarioExcel();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "calendario_bancas.xlsx"; // Nome do arquivo
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Download do calendário iniciado.");
+    } catch (error) {
+      toast.error("Erro ao exportar calendário.", {
+        description: error.message,
+      });
+    } finally {
+      setLoadingExcel(false);
     }
   };
 
@@ -294,21 +320,38 @@ const BancaAdmin = () => {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
         <div>
           <CardTitle>Bancas Geradas</CardTitle>
           <CardDescription>
             Visualize, edite e gere as atas das bancas de defesa.
           </CardDescription>
         </div>
-        <Button
-          onClick={handleGerarBancas}
-          disabled={loadingGenerate || loadingList}
-          className="flex-shrink-0"
-        >
-          {loadingGenerate && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Gerar/Atualizar Bancas
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          {" "}
+          {/* Agrupa os botões */}
+          <Button
+            onClick={handleGerarBancas}
+            disabled={loadingGenerate || loadingList || loadingExcel}
+            className="flex-shrink-0"
+          >
+            {loadingGenerate && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Gerar/Atualizar Bancas
+          </Button>
+          {/* Botão de Exportar Excel */}
+          <Button
+            variant="outline"
+            onClick={handleExportarExcel}
+            disabled={loadingGenerate || loadingList || loadingExcel}
+            className="flex-shrink-0"
+          >
+            {loadingExcel && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {!loadingExcel && <FileSpreadsheet className="mr-2 h-4 w-4" />}
+            Exportar Calendário
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {loadingList ? (

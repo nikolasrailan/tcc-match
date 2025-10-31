@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-import BancaAdmin from "@/app/components/admin/bancas/BancaAdmin";
+import BancaAdmin from "@/app/components/admin/bancas/BancaAdmin"; // O caminho correto para o componente
 
 export default function AdminBancasPage() {
   useAuthRedirect(); // Protege a rota

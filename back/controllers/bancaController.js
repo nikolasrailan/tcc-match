@@ -592,7 +592,7 @@ const bancaController = {
         doc.text("Com conceito final:", { lineGap: 4 });
         doc.moveDown(0.5);
 
-        // Mostra conceitos finais vazios
+        // Mostra conceitos finais vazias
         let conceitoText = conceitosFinais
           .map((cf) => `[ ] ${cf}`)
           .join("      "); // Adiciona espaço entre as opções
@@ -708,132 +708,161 @@ const bancaController = {
       res.status(500).json({ error: "Erro ao gerar o documento PDF da ata." });
     }
   },
-};
 
-exports.exportarCalendarioBancas = async (req, res) => {
-  try {
-    const bancas = await db.Banca.findAll({
-      include: [
-        {
-          model: db.Orientacao,
-          as: "orientacao",
-          required: true,
-          include: [
-            { model: db.Aluno, as: "aluno", attributes: ["nome"] },
-            { model: db.Professor, as: "professor", attributes: ["nome"] },
-            {
-              model: db.IdeiaTcc,
-              as: "ideiaTcc",
-              attributes: ["titulo", "artigo"], // Assumindo que 'artigo' é o campo com a URL
+  exportarCalendarioBancas: async (req, res) => {
+    try {
+      const bancas = await Banca.findAll({
+        // Alterado db.Banca para Banca
+        include: [
+          {
+            model: Orientacao, // Alterado db.Orientacao para Orientacao
+            as: "orientacao",
+            required: true,
+            include: [
+              {
+                model: Aluno, // Alterado db.Aluno para Aluno
+                as: "aluno",
+                attributes: ["id_aluno"], // Reduzido para apenas ID
+                include: {
+                  model: Usuario, // Alterado db.Usuario para Usuario
+                  as: "dadosUsuario",
+                  attributes: ["nome"],
+                },
+              },
+              {
+                model: Professor, // Alterado db.Professor para Professor
+                as: "professor",
+                attributes: ["id_professor"], // Reduzido para apenas ID
+                include: {
+                  model: Usuario, // Alterado db.Usuario para Usuario
+                  as: "usuario",
+                  attributes: ["nome"],
+                },
+              },
+              {
+                model: IdeiaTcc, // Alterado db.IdeiaTcc para IdeiaTcc
+                as: "ideiaTcc",
+                attributes: ["titulo"], // Removido 'artigo', pois não existe no modelo IdeiaTcc
+              },
+            ],
+          },
+          {
+            model: Professor, // Alterado db.Professor para Professor
+            as: "avaliador1", // Corrigido de 'membro_banca_1' para 'avaliador1'
+            attributes: ["id_professor"], // Reduzido para apenas ID
+            include: {
+              model: Usuario, // Alterado db.Usuario para Usuario
+              as: "usuario",
+              attributes: ["nome"],
             },
-          ],
+          },
+          {
+            model: Professor, // Alterado db.Professor para Professor
+            as: "avaliador2", // Corrigido de 'membro_banca_2' para 'avaliador2'
+            attributes: ["id_professor"], // Reduzido para apenas ID
+            include: {
+              model: Usuario, // Alterado db.Usuario para Usuario
+              as: "usuario",
+              attributes: ["nome"],
+            },
+          },
+          // Adicionado avaliador 3
+          {
+            model: Professor, // Alterado db.Professor para Professor
+            as: "avaliador3",
+            attributes: ["id_professor"], // Reduzido para apenas ID
+            include: {
+              model: Usuario, // Alterado db.Usuario para Usuario
+              as: "usuario",
+              attributes: ["nome"],
+            },
+          },
+        ],
+        where: {
+          data_defesa: { [Op.ne]: null }, // Apenas bancas com data definida
         },
-        { model: db.Professor, as: "membro_banca_1", attributes: ["nome"] },
-        { model: db.Professor, as: "membro_banca_2", attributes: ["nome"] },
-      ],
-      order: [
-        ["data_banca", "ASC"], // Ordenar por data
-      ],
-    });
-
-    // Criar um novo workbook e worksheet
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = "TCC Match";
-    workbook.created = new Date();
-    workbook.modified = new Date();
-
-    const worksheet = workbook.addWorksheet("Calendário de Bancas");
-
-    // Definir colunas
-    worksheet.columns = [
-      { header: "Data", key: "data", width: 15 },
-      { header: "Horário", key: "hora", width: 12 },
-      { header: "Local", key: "local", width: 20 },
-      { header: "Projeto (com link)", key: "projeto", width: 50 },
-      { header: "Aluno(a)", key: "aluno", width: 30 },
-      { header: "Orientador(a)", key: "orientador", width: 30 },
-      { header: "Membro Banca 1", key: "banca1", width: 30 },
-      { header: "Membro Banca 2", key: "banca2", width: 30 },
-    ];
-
-    // Estilizar o cabeçalho
-    worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-    worksheet.getRow(1).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF4F46E5" }, // Um roxo/azul
-    };
-    worksheet.getRow(1).alignment = {
-      vertical: "middle",
-      horizontal: "center",
-    };
-
-    // Adicionar os dados
-    bancas.forEach((banca) => {
-      // Pular se não tiver dados de orientação (embora o 'required: true' deva garantir)
-      if (!banca.orientacao) return;
-
-      const dataBanca = new Date(banca.data_banca);
-
-      // Criar a célula de projeto com hyperlink
-      const projetoUrl = banca.orientacao.ideiaTcc?.artigo;
-      let projetoCell;
-
-      if (
-        projetoUrl &&
-        (projetoUrl.startsWith("http://") || projetoUrl.startsWith("https://"))
-      ) {
-        projetoCell = {
-          text: banca.orientacao.ideiaTcc?.titulo || "Sem Título",
-          hyperlink: projetoUrl,
-          tooltip: "Clique para abrir o artigo",
-        };
-      } else {
-        // Se não tiver URL ou for inválida, bota só o texto
-        projetoCell = banca.orientacao.ideiaTcc?.titulo || "Sem Título";
-      }
-
-      worksheet.addRow({
-        data: dataBanca.toLocaleDateString("pt-BR", {
-          timeZone: "America/Sao_Paulo",
-        }),
-        hora: dataBanca.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "America/Sao_Paulo",
-        }),
-        local: banca.local,
-        projeto: projetoCell,
-        aluno: banca.orientacao.aluno?.nome || "N/A",
-        orientador: banca.orientacao.professor?.nome || "N/A",
-        banca1: banca.membro_banca_1?.nome || "N/A",
-        banca2: banca.membro_banca_2?.nome || "N/A",
+        order: [
+          ["data_defesa", "ASC"], // Ordenar por data_defesa
+        ],
       });
-    });
 
-    // Estilizar a coluna de projeto para parecer um link
-    worksheet.getColumn("projeto").font = {
-      color: { argb: "FF0000FF" },
-      underline: true,
-    };
+      // Criar um novo workbook e worksheet
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "TCC Match";
+      workbook.created = new Date();
+      workbook.modified = new Date();
 
-    // Configurar os headers da resposta para forçar o download
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=" + "calendario_bancas.xlsx"
-    );
+      const worksheet = workbook.addWorksheet("Calendário de Bancas");
 
-    // Escrever o workbook na resposta
-    await workbook.xlsx.write(res);
-    res.end();
-  } catch (error) {
-    console.error("Erro ao gerar Excel de bancas:", error);
-    res.status(500).json({ message: "Erro interno ao gerar arquivo Excel." });
-  }
+      // Definir colunas
+      worksheet.columns = [
+        { header: "Data", key: "data", width: 15 },
+        { header: "Horário", key: "hora", width: 12 },
+        { header: "Local", key: "local", width: 20 },
+        { header: "Projeto", key: "projeto", width: 50 }, // Removido "(com link)"
+        { header: "Aluno(a)", key: "aluno", width: 30 },
+        { header: "Orientador(a)", key: "orientador", width: 30 },
+        { header: "Avaliador 1", key: "banca1", width: 30 }, // Corrigido header
+        { header: "Avaliador 2", key: "banca2", width: 30 }, // Corrigido header
+        { header: "Avaliador 3", key: "banca3", width: 30 }, // Adicionado header
+      ];
+
+      // Estilizar o cabeçalho
+      worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF4F46E5" }, // Um roxo/azul
+      };
+      worksheet.getRow(1).alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+
+      // Adicionar os dados
+      bancas.forEach((banca) => {
+        // Pular se não tiver dados de orientação (embora o 'required: true' deva garantir)
+        if (!banca.orientacao) return;
+
+        const dataBanca = new Date(banca.data_defesa); // Corrigido para data_defesa
+
+        worksheet.addRow({
+          data: dataBanca.toLocaleDateString("pt-BR", {
+            timeZone: "America/Sao_Paulo",
+          }),
+          hora: dataBanca.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "America/Sao_Paulo",
+          }),
+          local: banca.local_defesa, // Corrigido para local_defesa
+          projeto: banca.orientacao.ideiaTcc?.titulo || "Sem Título",
+          aluno: banca.orientacao.aluno?.dadosUsuario?.nome || "N/A",
+          orientador: banca.orientacao.professor?.usuario?.nome || "N/A",
+          banca1: banca.avaliador1?.usuario?.nome || "N/A", // Corrigido para avaliador1
+          banca2: banca.avaliador2?.usuario?.nome || "N/A", // Corrigido para avaliador2
+          banca3: banca.avaliador3?.usuario?.nome || "N/A", // Adicionado avaliador3
+        });
+      });
+
+      // Configurar os headers da resposta para forçar o download
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=" + "calendario_bancas.xlsx"
+      );
+
+      // Escrever o workbook na resposta
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error("Erro ao gerar Excel de bancas:", error);
+      res.status(500).json({ message: "Erro interno ao gerar arquivo Excel." });
+    }
+  },
 };
 
 module.exports = bancaController;

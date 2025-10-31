@@ -348,3 +348,7 @@ export const salvarConceitoAta = (id_banca, data) =>
 // ADICIONAR EXPORT FALTANTE
 export const downloadAtaPdf = (id_banca) =>
   fetchApi(`/bancas/${id_banca}/download-ata`, { method: "GET" });
+
+// NOVA FUNÇÃO PARA EXCEL
+export const exportarCalendarioExcel = () =>
+  fetchApi("/bancas/exportar-calendario", { method: "GET" });
