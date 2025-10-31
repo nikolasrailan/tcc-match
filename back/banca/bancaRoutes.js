@@ -15,4 +15,6 @@ router.patch("/:id_banca/ata", bancaController.salvarConceitoAta);
 
 router.get("/:id_banca/download-ata", bancaController.gerarAtaPdf);
 
+router.get("/exportar-calendario", bancaController.exportarCalendarioBancas);
+
 module.exports = router;
