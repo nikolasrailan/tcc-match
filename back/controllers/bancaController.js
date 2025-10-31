@@ -631,25 +631,76 @@ const bancaController = {
         "Nada mais havendo, eu, presidente da banca, lavrei a presente ata que segue assinada por mim e demais membros.",
         { align: "justify", lineGap: 4 }
       );
-      doc.moveDown(3);
+      doc.moveDown(3); // Aumenta o espaço antes das assinaturas
 
-      // Assinaturas (simuladas)
-      const signatureY = doc.y; // Pega a posição atual
-      const signatureWidth = 200;
-      const startX = doc.page.margins.left; // Começa na margem esquerda
+      // --- Assinaturas ---
+      const assinaturaYInicial = doc.y; // Pega a posição Y atual
+      const assinaturaLargura = 180; // Largura de cada bloco de assinatura
+      const espacoEntreAssinaturas = 40; // Espaço horizontal entre assinaturas
+      const espacoVerticalAssinaturas = 70; // Aumentado de 50 para 70
+      const margemEsquerda = doc.page.margins.left;
+      const larguraPaginaUtil =
+        doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-      doc.text("___________________________", startX, signatureY, {
-        width: signatureWidth,
-        align: "center",
-      });
-      doc.text(orientador, startX, signatureY + 15, {
-        width: signatureWidth,
-        align: "center",
-      });
-      doc.text("(Presidente da Banca)", startX, signatureY + 30, {
-        width: signatureWidth,
-        align: "center",
-      });
+      // Lista de membros válidos da banca (nome e função)
+      const membrosBanca = [
+        { nome: orientador, funcao: "(Presidente da Banca)" },
+        avaliador1 ? { nome: avaliador1, funcao: "(Avaliador)" } : null,
+        avaliador2 ? { nome: avaliador2, funcao: "(Avaliador)" } : null,
+        avaliador3 ? { nome: avaliador3, funcao: "(Avaliador)" } : null,
+      ].filter(Boolean); // Remove os nulos
+
+      // Calcula posições e desenha assinaturas (tentativa de 2 por linha)
+      let currentY = assinaturaYInicial;
+      for (let i = 0; i < membrosBanca.length; i++) {
+        const membro = membrosBanca[i];
+        let currentX;
+
+        // Define a posição X e Y
+        if (i % 2 === 0) {
+          // Primeira coluna
+          currentX = margemEsquerda;
+          // Se não for a primeira linha, desce
+          if (i > 0) {
+            currentY += espacoVerticalAssinaturas; // Usa o espaço vertical maior
+          }
+        } else {
+          // Segunda coluna
+          // Ajusta X para a segunda coluna
+          currentX =
+            margemEsquerda + assinaturaLargura + espacoEntreAssinaturas;
+        }
+
+        // Garante que haja espaço suficiente na página, senão adiciona nova página
+        // (Considera aproximadamente 3 linhas de texto + margem -> ~55 pontos)
+        if (currentY + 55 > doc.page.height - doc.page.margins.bottom) {
+          doc.addPage();
+          currentY = doc.page.margins.top; // Começa no topo da nova página
+          // Recalcula X para a primeira coluna na nova página
+          if (i % 2 === 0) {
+            currentX = margemEsquerda;
+          } else {
+            currentX =
+              margemEsquerda + assinaturaLargura + espacoEntreAssinaturas;
+          }
+        }
+
+        // Desenha a linha, nome e função com mais espaço vertical
+        doc.text("___________________________", currentX, currentY, {
+          width: assinaturaLargura,
+          align: "center",
+        });
+        doc.text(membro.nome, currentX, currentY + 18, {
+          // Aumentado de 15 para 18
+          width: assinaturaLargura,
+          align: "center",
+        });
+        doc.text(membro.funcao, currentX, currentY + 36, {
+          // Aumentado de 30 para 36
+          width: assinaturaLargura,
+          align: "center",
+        });
+      }
 
       // --- Finaliza o PDF ---
       doc.end();
