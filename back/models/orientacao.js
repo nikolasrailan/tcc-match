@@ -70,6 +70,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      url_artigo: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       observacoes: {
         type: DataTypes.TEXT,
         allowNull: true,

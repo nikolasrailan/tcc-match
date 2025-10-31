@@ -158,6 +158,7 @@ const orientacaoController = {
       const toUpdate = {};
       // Aluno e Professor podem atualizar URL e Observações
       if (url_projeto !== undefined) toUpdate.url_projeto = url_projeto;
+      if (url_artigo !== undefined) toUpdate.url_artigo = url_artigo;
       if (observacoes !== undefined) toUpdate.observacoes = observacoes;
 
       // Apenas Professor pode mudar o status para pausado/desenvolvimento via PATCH geral

@@ -14,6 +14,21 @@ const PDFDocument = require("pdfkit");
 
 const ExcelJS = require("exceljs");
 
+// Importar dayjs e plugins
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+const timezone = require("dayjs/plugin/timezone");
+const customParseFormat = require("dayjs/plugin/customParseFormat");
+const localizedFormat = require("dayjs/plugin/localizedFormat");
+require("dayjs/locale/pt-br");
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(customParseFormat);
+dayjs.extend(localizedFormat);
+dayjs.locale("pt-br"); // Define o locale globalmente
+dayjs.tz.setDefault("America/Sao_Paulo"); // Define o fuso horário padrão
+
 // ... (função shuffleArray existente) ...
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -181,7 +196,6 @@ const bancaController = {
     }
   },
 
-  // ... (função listarBancas existente - vou omitir por brevidade, mas ela existe) ...
   async listarBancas(req, res) {
     try {
       const bancas = await Banca.findAll({
@@ -237,7 +251,6 @@ const bancaController = {
     }
   },
 
-  // ... (função atualizarDetalhesBanca existente - vou omitir por brevidade, mas ela existe) ...
   async atualizarDetalhesBanca(req, res) {
     const t = await sequelize.transaction(); // Inicia transação
     try {
@@ -254,47 +267,50 @@ const bancaController = {
 
       // Atualiza data_defesa se fornecida
       if (data_defesa !== undefined) {
-        const novaDataDefesa = new Date(data_defesa);
-        if (isNaN(novaDataDefesa.getTime())) {
-          await t.rollback();
-          return res
-            .status(400)
-            .json({ error: "Formato de data/hora inválido." });
-        }
+        // Se a data for null, define como null (para limpar)
+        if (data_defesa === null) {
+          dadosAtualizar.data_defesa = null;
+        } else {
+          const novaDataDefesa = dayjs.tz(data_defesa, "America/Sao_Paulo"); // Interpreta a data no fuso
+          if (!novaDataDefesa.isValid()) {
+            await t.rollback();
+            return res
+              .status(400)
+              .json({ error: "Formato de data/hora inválido." });
+          }
 
-        // --- Verificação de Conflito ---
-        const dataInicioNova = novaDataDefesa;
-        const dataFimNova = new Date(dataInicioNova.getTime() + 30 * 60 * 1000); // Fim da nova = início + 30 min (buffer)
-        const dataInicioBufferAntes = new Date(
-          dataInicioNova.getTime() - 30 * 60 * 1000
-        );
+          // --- Verificação de Conflito ---
+          const dataInicioNova = novaDataDefesa.toDate();
+          // Buffer de 30 minutos (início + 30)
+          const dataFimNova = dayjs(dataInicioNova).add(30, "minutes").toDate();
+          // Buffer de 30 minutos (início - 30)
+          const dataInicioBufferAntes = dayjs(dataInicioNova)
+            .subtract(30, "minutes")
+            .toDate();
 
-        const conflito = await Banca.findOne({
-          where: {
-            id_banca: { [Op.ne]: id_banca }, // Exclui a própria banca
-            data_defesa: {
-              [Op.ne]: null, // Considera apenas bancas com data definida
-              [Op.between]: [dataInicioBufferAntes, dataFimNova], // Verifica se alguma banca existente começa DENTRO do intervalo de buffer da nova
-              // Verifica se o INÍCIO de uma banca existente está entre (início_nova - 30min) e (início_nova + 30min)
-              // Isso cobre conflitos antes e depois, considerando o buffer de 30 minutos.
+          const conflito = await Banca.findOne({
+            where: {
+              id_banca: { [Op.ne]: id_banca }, // Exclui a própria banca
+              data_defesa: {
+                [Op.ne]: null, // Considera apenas bancas com data definida
+                // Verifica se alguma banca existente começa DENTRO do intervalo de buffer da nova
+                [Op.between]: [dataInicioBufferAntes, dataFimNova],
+              },
             },
-          },
-          transaction: t,
-        });
-
-        if (conflito) {
-          await t.rollback();
-          const conflitoHora = conflito.data_defesa.toLocaleTimeString(
-            "pt-BR",
-            { hour: "2-digit", minute: "2-digit" }
-          );
-          return res.status(409).json({
-            error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
+            transaction: t,
           });
-        }
-        // --- Fim Verificação de Conflito ---
 
-        dadosAtualizar.data_defesa = novaDataDefesa;
+          if (conflito) {
+            await t.rollback();
+            const conflitoHora = dayjs.tz(conflito.data_defesa).format("HH:mm");
+            return res.status(409).json({
+              error: `Conflito de horário. Já existe uma banca às ${conflitoHora}. O intervalo mínimo é de 30 minutos.`,
+            });
+          }
+          // --- Fim Verificação de Conflito ---
+
+          dadosAtualizar.data_defesa = novaDataDefesa.toDate(); // Salva como objeto Date
+        }
       }
 
       if (local_defesa !== undefined) {
@@ -304,8 +320,8 @@ const bancaController = {
       if (Object.keys(dadosAtualizar).length > 0) {
         await banca.update(dadosAtualizar, { transaction: t });
       } else {
+        // Se nada foi enviado, não é um erro, apenas não há o que fazer.
         await t.rollback();
-
         return res.status(200).json({ message: "Nenhum dado para atualizar." });
       }
 
@@ -367,7 +383,6 @@ const bancaController = {
     }
   },
 
-  // ... (função salvarConceitoAta existente) ...
   async salvarConceitoAta(req, res) {
     const t = await sequelize.transaction();
     try {
@@ -457,7 +472,6 @@ const bancaController = {
       }
 
       // Verifica se os dados essenciais (data e local) existem
-      // REMOVIDO: || !banca.conceito_aprovacao || !banca.conceito_final da condição abaixo
       if (!banca.data_defesa || !banca.local_defesa) {
         return res.status(400).json({
           error:
@@ -473,32 +487,12 @@ const bancaController = {
         banca.orientacao?.ideiaTcc?.titulo || "[Título Projeto]";
       const curso = banca.orientacao?.aluno?.cursoInfo?.nome || "[Nome Curso]";
 
-      const dataDefesa = banca.data_defesa ? new Date(banca.data_defesa) : null;
-      const dia = dataDefesa
-        ? dataDefesa.toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            timeZone: "America/Sao_Paulo",
-          })
-        : "__";
-      const mes = dataDefesa
-        ? dataDefesa.toLocaleDateString("pt-BR", {
-            month: "long",
-            timeZone: "America/Sao_Paulo",
-          })
-        : "__";
-      const ano = dataDefesa
-        ? dataDefesa.toLocaleDateString("pt-BR", {
-            year: "numeric",
-            timeZone: "America/Sao_Paulo",
-          })
-        : "__";
-      const hora = dataDefesa
-        ? dataDefesa.toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "America/Sao_Paulo",
-          })
-        : "__";
+      // Usa dayjs para formatar corretamente com fuso horário
+      const dataDefesa = dayjs.tz(banca.data_defesa);
+      const dia = dataDefesa.format("DD");
+      const mes = dataDefesa.format("MMMM");
+      const ano = dataDefesa.format("YYYY");
+      const hora = dataDefesa.format("HH:mm");
 
       const local = banca.local_defesa || "[Local não definido]";
 
@@ -637,8 +631,6 @@ const bancaController = {
       const espacoEntreAssinaturas = 40; // Espaço horizontal entre assinaturas
       const espacoVerticalAssinaturas = 70; // Aumentado de 50 para 70
       const margemEsquerda = doc.page.margins.left;
-      const larguraPaginaUtil =
-        doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
       // Lista de membros válidos da banca (nome e função)
       const membrosBanca = [
@@ -709,73 +701,62 @@ const bancaController = {
     }
   },
 
+  // MODIFICADO: exportarCalendarioBancas
   exportarCalendarioBancas: async (req, res) => {
     try {
       const bancas = await Banca.findAll({
-        // Corrigido de db.Banca
         include: [
           {
-            model: Orientacao, // Corrigido de db.Orientacao
+            model: Orientacao,
             as: "orientacao",
             required: true,
+            // Adiciona url_projeto
+            attributes: ["id_orientacao", "url_projeto"],
             include: [
               {
-                model: Aluno, // Corrigido de db.Aluno
+                model: Aluno,
                 as: "aluno",
-                attributes: ["id_aluno"], // Reduzido para apenas ID
+                attributes: ["id_aluno"],
                 include: {
-                  model: Usuario, // Corrigido de db.Usuario
+                  model: Usuario,
                   as: "dadosUsuario",
                   attributes: ["nome"],
                 },
               },
               {
-                model: Professor, // Corrigido de db.Professor
+                model: Professor,
                 as: "professor",
-                attributes: ["id_professor"], // Reduzido para apenas ID
+                attributes: ["id_professor"],
                 include: {
-                  model: Usuario, // Corrigido de db.Usuario
+                  model: Usuario,
                   as: "usuario",
                   attributes: ["nome"],
                 },
               },
               {
-                model: IdeiaTcc, // Corrigido de db.IdeiaTcc
+                model: IdeiaTcc,
                 as: "ideiaTcc",
-                attributes: ["titulo"], // Removido 'artigo', pois não existe no modelo IdeiaTcc
+                attributes: ["titulo"],
               },
             ],
           },
           {
-            model: Professor, // Corrigido de db.Professor
-            as: "avaliador1", // Corrigido de 'membro_banca_1' para 'avaliador1'
-            attributes: ["id_professor"], // Reduzido para apenas ID
-            include: {
-              model: Usuario, // Corrigido de db.Usuario
-              as: "usuario",
-              attributes: ["nome"],
-            },
+            model: Professor,
+            as: "avaliador1",
+            attributes: ["id_professor"],
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
           },
           {
-            model: Professor, // Corrigido de db.Professor
-            as: "avaliador2", // Corrigido de 'membro_banca_2' para 'avaliador2'
-            attributes: ["id_professor"], // Reduzido para apenas ID
-            include: {
-              model: Usuario, // Corrigido de db.Usuario
-              as: "usuario",
-              attributes: ["nome"],
-            },
+            model: Professor,
+            as: "avaliador2",
+            attributes: ["id_professor"],
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
           },
-          // Adicionado avaliador 3
           {
-            model: Professor, // Corrigido de db.Professor
+            model: Professor,
             as: "avaliador3",
-            attributes: ["id_professor"], // Reduzido para apenas ID
-            include: {
-              model: Usuario, // Corrigido de db.Usuario
-              as: "usuario",
-              attributes: ["nome"],
-            },
+            attributes: ["id_professor"],
+            include: { model: Usuario, as: "usuario", attributes: ["nome"] },
           },
         ],
         where: {
@@ -786,90 +767,195 @@ const bancaController = {
         ],
       });
 
-      // Criar um novo workbook e worksheet
+      if (bancas.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "Nenhuma banca com data definida encontrada." });
+      }
+
+      // 1. Agrupar bancas por Data e Hora
+      const calendario = new Map(); // Map<string (data), Map<string (hora), Banca[]>>
+      const horariosSet = new Set();
+      const diasSet = new Set();
+
+      bancas.forEach((banca) => {
+        // Pula se não tiver dados de orientação (embora o 'required: true' deva garantir)
+        if (!banca.data_defesa || !banca.orientacao) return;
+
+        const dataDefesa = dayjs.tz(banca.data_defesa); // Usa dayjs com timezone
+        const diaString = dataDefesa.format("YYYY-MM-DD");
+        const horaString = dataDefesa.format("HH:mm");
+
+        diasSet.add(diaString);
+        horariosSet.add(horaString);
+
+        if (!calendario.has(diaString)) {
+          calendario.set(diaString, new Map());
+        }
+        if (!calendario.get(diaString).has(horaString)) {
+          calendario.get(diaString).set(horaString, []);
+        }
+        // Adiciona a banca ao slot de data/hora
+        calendario.get(diaString).get(horaString).push(banca);
+      });
+
+      // Ordena os dias e horários
+      const diasOrdenados = Array.from(diasSet).sort();
+      const horariosOrdenados = Array.from(horariosSet).sort();
+
+      // 2. Criar o Workbook e Worksheet
       const workbook = new ExcelJS.Workbook();
       workbook.creator = "TCC Match";
       workbook.created = new Date();
-      workbook.modified = new Date();
-
       const worksheet = workbook.addWorksheet("Calendário de Bancas");
 
-      // Definir colunas
-      worksheet.columns = [
-        { header: "Data", key: "data", width: 15 },
-        { header: "Horário", key: "hora", width: 12 },
-        { header: "Local", key: "local", width: 20 },
-        { header: "Projeto", key: "projeto", width: 50 }, // Removido "(com link)"
-        { header: "Aluno(a)", key: "aluno", width: 30 },
-        { header: "Orientador(a)", key: "orientador", width: 30 },
-        { header: "Avaliador 1", key: "banca1", width: 30 }, // Corrigido
-        { header: "Avaliador 2", key: "banca2", width: 30 }, // Corrigido
-        { header: "Avaliador 3", key: "banca3", width: 30 }, // Adicionado
-      ];
+      // 3. Criar Cabeçalho (Dias da Semana)
+      const colunas = [{ header: "Horário", key: "hora", width: 12 }];
 
-      // Estilizar o cabeçalho
-      worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-      worksheet.getRow(1).fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF4F46E5" }, // Um roxo/azul
-      };
-      worksheet.getRow(1).alignment = {
-        vertical: "middle",
-        horizontal: "center",
-      };
-
-      // Adicionar os dados
-      bancas.forEach((banca) => {
-        // Pular se não tiver dados de orientação (embora o 'required: true' deva garantir)
-        if (!banca.orientacao) return;
-
-        const dataBanca = new Date(banca.data_defesa); // Corrigido para data_defesa
-
-        // Criar a célula de projeto com hyperlink
-        // const projetoUrl = banca.orientacao.ideiaTcc?.artigo; // 'artigo' não existe no modelo
-        let projetoCell = banca.orientacao.ideiaTcc?.titulo || "Sem Título";
-
-        // if (
-        //   projetoUrl &&
-        //   (projetoUrl.startsWith("http://") || projetoUrl.startsWith("https://"))
-        // ) {
-        //   projetoCell = {
-        //     text: banca.orientacao.ideiaTcc?.titulo || "Sem Título",
-        //     hyperlink: projetoUrl,
-        //     tooltip: "Clique para abrir o artigo",
-        //   };
-        // } else {
-        //   // Se não tiver URL ou for inválida, bota só o texto
-        //   projetoCell = banca.orientacao.ideiaTcc?.titulo || "Sem Título";
-        // }
-
-        worksheet.addRow({
-          data: dataBanca.toLocaleDateString("pt-BR", {
-            timeZone: "America/Sao_Paulo",
-          }),
-          hora: dataBanca.toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "America/Sao_Paulo",
-          }),
-          local: banca.local_defesa, // Corrigido para local_defesa
-          projeto: projetoCell,
-          aluno: banca.orientacao.aluno?.dadosUsuario?.nome || "N/A",
-          orientador: banca.orientacao.professor?.usuario?.nome || "N/A",
-          banca1: banca.avaliador1?.usuario?.nome || "N/A", // Corrigido para avaliador1
-          banca2: banca.avaliador2?.usuario?.nome || "N/A", // Corrigido para avaliador2
-          banca3: banca.avaliador3?.usuario?.nome || "N/A", // Adicionado avaliador3
-        });
+      // Adiciona colunas para cada dia
+      diasOrdenados.forEach((diaString) => {
+        // Formata o cabeçalho do dia (ex: "Segunda - 10/02")
+        const diaFormatado = dayjs(diaString).format("dddd - DD/MM");
+        colunas.push({ header: diaFormatado, key: diaString, width: 55 }); // Largura maior
       });
 
-      // Estilizar a coluna de projeto para parecer um link
-      // worksheet.getColumn("projeto").font = {
-      //   color: { argb: "FF0000FF" },
-      //   underline: true,
-      // };
+      worksheet.columns = colunas;
 
-      // Configurar os headers da resposta para forçar o download
+      // Estilizar o cabeçalho
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+      headerRow.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: true,
+      };
+      headerRow.height = 40; // Altura maior para o cabeçalho
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF4F46E5" }, // Azul/Roxo
+        };
+      });
+
+      // 4. Adicionar Linhas (Horários e Bancas)
+      horariosOrdenados.forEach((horaString) => {
+        const rowData = { hora: horaString };
+
+        // *** REMOVIDO: hyperlinksParaAdicionar ***
+
+        diasOrdenados.forEach((diaString) => {
+          const bancasDoSlot = calendario.get(diaString)?.get(horaString);
+
+          if (bancasDoSlot && bancasDoSlot.length > 0) {
+            const cellRichText = [];
+
+            // *** REMOVIDO: primeiroLinkValido ***
+
+            // Itera sobre todas as bancas naquele slot (caso haja mais de uma)
+            bancasDoSlot.forEach((banca, index) => {
+              if (index > 0) {
+                // Adiciona um separador visual se houver mais de uma banca no mesmo slot
+                cellRichText.push({
+                  text: "\n\n— — — — — — — —\n\n",
+                  font: { color: { argb: "FF888888" } },
+                });
+              }
+
+              // Extrai os dados da banca
+              const orientador =
+                banca.orientacao.professor?.usuario?.nome || "N/A";
+              const aluno = banca.orientacao.aluno?.dadosUsuario?.nome || "N/A";
+              const avaliador1 = banca.avaliador1?.usuario?.nome || "N/A";
+              const avaliador2 = banca.avaliador2?.usuario?.nome || "N/A";
+              const avaliador3 = banca.avaliador3?.usuario?.nome || "N/A";
+              const titulo = banca.orientacao.ideiaTcc?.titulo || "Sem Título";
+              const url_projeto = banca.orientacao.url_projeto;
+
+              // Adiciona os textos formatados ao richText
+              cellRichText.push(
+                {
+                  text: `ORIENTADOR(A): ${orientador}\n`,
+                  font: { bold: true, size: 10 },
+                },
+                { text: `Discente: ${aluno}\n`, font: { size: 10 } },
+                { text: `BANCA: ${avaliador1}\n`, font: { size: 10 } },
+                { text: `BANCA 2: ${avaliador2}\n`, font: { size: 10 } },
+                { text: `BANCA 3: ${avaliador3}\n\n`, font: { size: 10 } },
+                { text: "Título: ", font: { bold: true, size: 10 } },
+                { text: `${titulo}\n`, font: { size: 10 } } // Título como texto normal
+              );
+
+              // **CORREÇÃO: Adiciona a URL como texto plano**
+              if (
+                url_projeto &&
+                (url_projeto.startsWith("http://") ||
+                  url_projeto.startsWith("https://"))
+              ) {
+                cellRichText.push(
+                  { text: "\nLink Projeto: ", font: { bold: true, size: 10 } },
+                  {
+                    text: url_projeto,
+                    // Adiciona estilo azul e sublinhado para parecer um link
+                    font: {
+                      color: { argb: "FF0000FF" }, // Azul
+                      underline: true,
+                      size: 10,
+                    },
+                  }
+                );
+              }
+            });
+
+            rowData[diaString] = { richText: cellRichText };
+
+            // *** REMOVIDO: Bloco if (primeiroLinkValido) ***
+          } else {
+            rowData[diaString] = ""; // Vazio se não houver banca
+          }
+        });
+
+        const row = worksheet.addRow(rowData);
+
+        // *** REMOVIDO: hyperlinksParaAdicionar.forEach ***
+
+        // Estilizar a linha de dados
+        row.alignment = {
+          vertical: "top",
+          horizontal: "left",
+          wrapText: true,
+        };
+        row.getCell("hora").alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+        row.getCell("hora").font = { bold: true, size: 11 };
+
+        // Estima a altura da linha
+        let maxLines = 1;
+        diasOrdenados.forEach((diaString) => {
+          const cellValue = row.getCell(diaString).value;
+          if (cellValue && cellValue.richText) {
+            // Estima o número de linhas baseado em newlines e no N de bancas
+            const bancasCount =
+              (
+                cellValue.richText.filter((rt) => rt.text.includes("— — —")) ||
+                []
+              ).length + 1;
+            // Ajuste na contagem de linhas: conta \n e adiciona linhas estimadas
+            const newLines = cellValue.richText.reduce(
+              (acc, rt) => acc + (rt.text.split("\n").length - 1),
+              0
+            );
+            // Aumenta a estimativa por banca para 7 (6 linhas de dados + 1 para o link)
+            const totalLines = newLines + bancasCount * 7;
+            if (totalLines > maxLines) maxLines = totalLines;
+          }
+        });
+        row.height = Math.max(70, maxLines * 12); // Altura mínima de 70, ou 12 por linha estimada
+      });
+
+      // 5. Configurar resposta e enviar
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

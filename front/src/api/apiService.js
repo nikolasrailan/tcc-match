@@ -26,16 +26,23 @@ async function fetchApi(endpoint, options = {}) {
 
     const contentType = response.headers.get("content-type");
 
-    // Handle PDF download specifically
-    if (contentType && contentType.includes("application/pdf")) {
+    // Handle file downloads (PDF, Excel, etc.)
+    // ATUALIZAÇÃO: Adicionada a verificação para o content-type do Excel
+    if (
+      contentType &&
+      (contentType.includes("application/pdf") ||
+        contentType.includes(
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ))
+    ) {
       if (!response.ok) {
-        // Try to get error message from text for PDF errors
+        // Try to get error message from text for file errors
         const textError = await response.text();
         throw new Error(
           textError || `Erro ${response.status}: ${response.statusText}`
         );
       }
-      return response.blob(); // Return the PDF blob directly
+      return response.blob(); // Return the file blob directly
     }
 
     // Handle other non-OK responses
@@ -345,10 +352,8 @@ export const salvarConceitoAta = (id_banca, data) =>
     body: JSON.stringify(data),
   });
 
-// ADICIONAR EXPORT FALTANTE
 export const downloadAtaPdf = (id_banca) =>
   fetchApi(`/bancas/${id_banca}/download-ata`, { method: "GET" });
 
-// NOVA FUNÇÃO PARA EXCEL
 export const exportarCalendarioExcel = () =>
   fetchApi("/bancas/exportar-calendario", { method: "GET" });

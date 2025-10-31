@@ -90,6 +90,7 @@ const OrientacaoCard = ({
 
   const [formData, setFormData] = useState({
     url_projeto: orientacao.url_projeto || "",
+    url_artigo: orientacao.url_artigo || "", // ADICIONADO
     observacoes: orientacao.observacoes || "",
   });
 
@@ -97,6 +98,7 @@ const OrientacaoCard = ({
   useEffect(() => {
     setFormData({
       url_projeto: orientacao.url_projeto || "",
+      url_artigo: orientacao.url_artigo || "", // ADICIONADO
       observacoes: orientacao.observacoes || "",
     });
     // Reseta estados relacionados a ações ao mudar a orientação
@@ -687,6 +689,20 @@ const OrientacaoCard = ({
                 disabled={isActionDisabled} // Desabilita se ações pendentes ou finalizado
               />
             </div>
+            {/* INÍCIO DA ADIÇÃO - CAMPO DE EDIÇÃO URL ARTIGO */}
+            <div>
+              <Label htmlFor="url_artigo">
+                URL do Artigo (Link para PDF/Documento)
+              </Label>
+              <Input
+                id="url_artigo"
+                name="url_artigo"
+                value={formData.url_artigo}
+                onChange={handleChange}
+                disabled={isActionDisabled}
+              />
+            </div>
+            {/* FIM DA ADIÇÃO - CAMPO DE EDIÇÃO URL ARTIGO */}
             <div>
               <Label htmlFor="observacoes">Observações</Label>
               <Textarea
@@ -722,6 +738,29 @@ const OrientacaoCard = ({
                 </p>
               )}
             </div>
+            {/* INÍCIO DA ADIÇÃO - EXIBIÇÃO URL ARTIGO */}
+            <div>
+              <Label>URL do Artigo (Link para PDF/Documento)</Label>
+              {orientacao.url_artigo ? (
+                <a
+                  href={
+                    orientacao.url_artigo.startsWith("http")
+                      ? orientacao.url_artigo
+                      : `http://${orientacao.url_artigo}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-500 hover:underline block mt-1 break-all"
+                >
+                  {orientacao.url_artigo}
+                </a>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Nenhum link de artigo adicionado.
+                </p>
+              )}
+            </div>
+            {/* FIM DA ADIÇÃO - EXIBIÇÃO URL ARTIGO */}
             <div>
               <Label>Observações</Label>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">
