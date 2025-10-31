@@ -94,7 +94,7 @@ const orientacaoController = {
   async updateOrientacao(req, res) {
     try {
       const { id } = req.params;
-      const { url_projeto, observacoes, status } = req.body; // Status é mantido aqui para pausar/retomar
+      const { url_projeto, url_artigo, observacoes, status } = req.body; // Status é mantido aqui para pausar/retomar
       const idUsuario = req.user.id;
 
       const orientacao = await Orientacao.findByPk(id);

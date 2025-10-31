@@ -710,13 +710,13 @@ const bancaController = {
             model: Orientacao,
             as: "orientacao",
             required: true,
-            // Adiciona url_projeto
-            attributes: ["id_orientacao", "url_projeto"],
+            // Adiciona url_projeto e url_artigo
+            attributes: ["id_orientacao", "url_projeto", "url_artigo"], // <-- MODIFICADO
             include: [
               {
                 model: Aluno,
                 as: "aluno",
-                attributes: ["id_aluno"],
+                attributes: ["id_aluno"], // Reduzido para apenas ID
                 include: {
                   model: Usuario,
                   as: "dadosUsuario",
@@ -726,7 +726,7 @@ const bancaController = {
               {
                 model: Professor,
                 as: "professor",
-                attributes: ["id_professor"],
+                attributes: ["id_professor"], // Reduzido para apenas ID
                 include: {
                   model: Usuario,
                   as: "usuario",
@@ -842,15 +842,11 @@ const bancaController = {
       horariosOrdenados.forEach((horaString) => {
         const rowData = { hora: horaString };
 
-        // *** REMOVIDO: hyperlinksParaAdicionar ***
-
         diasOrdenados.forEach((diaString) => {
           const bancasDoSlot = calendario.get(diaString)?.get(horaString);
 
           if (bancasDoSlot && bancasDoSlot.length > 0) {
             const cellRichText = [];
-
-            // *** REMOVIDO: primeiroLinkValido ***
 
             // Itera sobre todas as bancas naquele slot (caso haja mais de uma)
             bancasDoSlot.forEach((banca, index) => {
@@ -871,6 +867,7 @@ const bancaController = {
               const avaliador3 = banca.avaliador3?.usuario?.nome || "N/A";
               const titulo = banca.orientacao.ideiaTcc?.titulo || "Sem Título";
               const url_projeto = banca.orientacao.url_projeto;
+              const url_artigo = banca.orientacao.url_artigo; // <-- ADICIONADO
 
               // Adiciona os textos formatados ao richText
               cellRichText.push(
@@ -883,10 +880,10 @@ const bancaController = {
                 { text: `BANCA 2: ${avaliador2}\n`, font: { size: 10 } },
                 { text: `BANCA 3: ${avaliador3}\n\n`, font: { size: 10 } },
                 { text: "Título: ", font: { bold: true, size: 10 } },
-                { text: `${titulo}\n`, font: { size: 10 } } // Título como texto normal
+                { text: `${titulo}`, font: { size: 10 } } // Título como texto normal
               );
 
-              // **CORREÇÃO: Adiciona a URL como texto plano**
+              // Adiciona a URL do Projeto como texto plano
               if (
                 url_projeto &&
                 (url_projeto.startsWith("http://") ||
@@ -896,7 +893,6 @@ const bancaController = {
                   { text: "\nLink Projeto: ", font: { bold: true, size: 10 } },
                   {
                     text: url_projeto,
-                    // Adiciona estilo azul e sublinhado para parecer um link
                     font: {
                       color: { argb: "FF0000FF" }, // Azul
                       underline: true,
@@ -905,19 +901,39 @@ const bancaController = {
                   }
                 );
               }
+
+              // **INÍCIO DA MODIFICAÇÃO CORRIGIDA**
+              // Adiciona a URL do Artigo como texto plano
+              if (
+                url_artigo &&
+                (url_artigo.startsWith("http://") ||
+                  url_artigo.startsWith("https://"))
+              ) {
+                // Sempre adiciona uma quebra de linha antes do Link Artigo (seja após o título ou após o Link Projeto)
+                cellRichText.push({ text: "\n" });
+
+                cellRichText.push(
+                  { text: "Link Artigo: ", font: { bold: true, size: 10 } },
+                  {
+                    text: url_artigo,
+                    font: {
+                      color: { argb: "FF0000FF" }, // Azul
+                      underline: true,
+                      size: 10,
+                    },
+                  }
+                );
+              }
+              // **FIM DA MODIFICAÇÃO CORRIGIDA**
             });
 
             rowData[diaString] = { richText: cellRichText };
-
-            // *** REMOVIDO: Bloco if (primeiroLinkValido) ***
           } else {
             rowData[diaString] = ""; // Vazio se não houver banca
           }
         });
 
         const row = worksheet.addRow(rowData);
-
-        // *** REMOVIDO: hyperlinksParaAdicionar.forEach ***
 
         // Estilizar a linha de dados
         row.alignment = {
@@ -947,12 +963,12 @@ const bancaController = {
               (acc, rt) => acc + (rt.text.split("\n").length - 1),
               0
             );
-            // Aumenta a estimativa por banca para 7 (6 linhas de dados + 1 para o link)
-            const totalLines = newLines + bancasCount * 7;
+            // Aumenta a estimativa por banca para 8 (6 linhas de dados + 1 projeto + 1 artigo)
+            const totalLines = newLines + bancasCount * 8;
             if (totalLines > maxLines) maxLines = totalLines;
           }
         });
-        row.height = Math.max(70, maxLines * 12); // Altura mínima de 70, ou 12 por linha estimada
+        row.height = Math.max(50, maxLines * 12); // Altura mínima de 70, ou 12 por linha estimada
       });
 
       // 5. Configurar resposta e enviar

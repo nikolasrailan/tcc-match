@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import OrientacaoCard from "../components/orientacao/OrientacaoCard";
 import OrientacaoTabs from "../components/orientacao/OrientacaoTabs"; // Para professor com múltiplas ativas
 import { Separator } from "@/components/ui/separator"; // Para separar ativas de inativas
+import { toast } from "sonner";
 
 export default function OrientacaoPage() {
   useAuthRedirect();
@@ -83,6 +84,7 @@ export default function OrientacaoPage() {
     setLoading(true);
     try {
       await updateOrientacao(id, data);
+      toast.success("Orientação atualizada com sucesso!");
       await fetchData(); // Recarrega os dados após a atualização
     } catch (err) {
       setError(err.message || "Falha ao atualizar a orientação.");
